@@ -142,17 +142,16 @@ class GPMCMB(ReferenceDataset):
                     j_cntr = cols[ind]
 
                     i_start = i_cntr - scene_size[0] // 2
-                    i_end = i_start + scene_size[0] // multiple
+                    i_end = i_start + scene_size[0]
                     j_start = j_cntr - scene_size[0] // 2
-                    j_end = j_start + scene_size[0] // multiple
+                    j_end = j_start + scene_size[0]
                     row_slice = slice(i_start, i_end)
                     col_slice = slice(j_start, j_end)
 
-                    print("QI :: ", (qi[i_cntr, j_cntr]), (qi[row_slice, col_slice] > quality_threshold).mean())
-                    if (qi[row_slice, col_slice] > quality_threshold).mean() > 0.1:
+                    if (qi[row_slice, col_slice] > quality_threshold).mean() > 0.01:
                         found = True
+                    count += 1
 
-            print("RETURNING :: ", (4 * i_start, 4 * i_end, 4 * j_start, 4 * j_end))
             return (4 * i_start, 4 * i_end, 4 * j_start, 4 * j_end)
         except Exception:
             return None
@@ -262,10 +261,8 @@ class GPMCMB(ReferenceDataset):
                 sp_mask = np.isfinite(data.surface_precip.data)
                 sp[sp_mask] = data.surface_precip.data[sp_mask]
                 rqi = existing.rqi.data
-                print("UDATING BEFORE :: ", rqi.sum())
                 rqi_mask = 0.5 < data.rqi.data
                 rqi[rqi_mask] = 1.0
-                print("UDATING AFTER :: ", existing.rqi.data.sum())
                 data.to_netcdf(output_file)
             else:
                 LOGGER.info(

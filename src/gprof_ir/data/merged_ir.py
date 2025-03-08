@@ -40,7 +40,15 @@ class MergedIR(InputDataset):
     Represents input data derived from merged IR data.
     """
     def __init__(self):
-        InputDataset.__init__(self, "merged_ir", "merged_ri", 4, "tbs", n_dim=2, spatial_dims=("latitude", "longitude"))
+        InputDataset.__init__(
+            self,
+            "merged_ir",
+            "merged_ir",
+            4,
+            "tbs",
+            n_dim=2,
+            spatial_dims=("latitude", "longitude")
+        )
         self.scale = 4
 
     @property
