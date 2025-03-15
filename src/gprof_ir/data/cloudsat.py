@@ -7,7 +7,7 @@ Provides an interface to extract combined CloudSat/ERA5 reference data.
 from datetime import datetime
 import logging
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 import numpy as np
 from pansat import Geometry, FileRecord
@@ -140,17 +140,17 @@ class LightPrecip(ReferenceDataset):
 
         total_precip = np.nan * np.zeros_like(surface_precip)
         total_precip[pflag == 0] = 0.0
-        total_precip[surface_precip > 0] = surface_precip[surface_precip > 0]
-        total_precip[surface_precip_snow > 0] = surface_precip_snow[surface_precip_snow > 0]
+
+        rain_flag = (0 < pflag) * (pflag < 4) * (surface_precip >= 0.0)
+        total_precip[rain_flag] = surface_precip[rain_flag]
+        snow_flag = (4 < pflag) * (pflag < 9)
+        total_precip[snow_flag] = surface_precip_snow[snow_flag]
 
         mask = (surface_precip < 0) * (0 < pflag) * (pflag < 4)
         lons = pc_data.longitude.data[mask]
         lats = pc_data.latitude.data[mask]
         time = pc_data.time.data[mask]
         lons[lons < 0] += 360
-
-        print("N ERA5 :: ", len(lons))
-        print("MASK :: ", mask.shape)
 
         if len(lons) > 0:
             era5_precip = []
@@ -220,18 +220,20 @@ class LightPrecip(ReferenceDataset):
                 continue
 
             encoding = {
-                "surface_precip": {"dtype": "float32", "zlib": True},
+                "light_precip": {"dtype": "float32", "zlib": True},
                 "longitude": {"dtype": "float32", "zlib": True},
                 "latitude": {"dtype": "float32", "zlib": True},
                 "rqi": {"dtype": "int8", "zlib": True, "_FillValue": -1},
             }
 
-            rqi = rqi[::4, ::4]
+            height, width = rqi.shape
+            rqi = rqi.reshape(height // 4, 4, width // 4, 4)
+            rqi = rqi.any(axis=1).any(axis=2)
 
             data = xr.Dataset({
                 "latitude": (("latitude"), lats_g),
                 "longitude": (("longitude"), lons_g),
-                "surface_precip": (("latitude", "longitude"), precip),
+                "light_precip": (("latitude", "longitude"), precip),
                 "rqi": (("latitude_ds", "longitude_ds"), rqi),
             })
             filename = get_output_filename(
@@ -244,17 +246,86 @@ class LightPrecip(ReferenceDataset):
                 sp_mask = np.isfinite(data.surface_precip.data)
                 sp[sp_mask] = data.surface_precip.data[sp_mask]
                 rqi = existing.rqi.data
-                print("UDATING BEFORE :: ", rqi.sum())
                 rqi_mask = 0.5 < data.rqi.data
                 rqi[rqi_mask] = 1.0
-                print("UDATING AFTER :: ", existing.rqi.data.sum())
-                data.to_netcdf(output_file)
+                data.to_netcdf(output_file, encoding=encoding)
             else:
                 LOGGER.info(
                         "Writing training samples to %s.",
                         output_folder / filename
                 )
                 data.to_netcdf(output_folder / filename, encoding=encoding)
+
+    def find_random_scene(
+        self,
+        path: Path,
+        rng: np.random.Generator,
+        multiple: int = 4,
+        scene_size: int = 256,
+        quality_threshold: float = 0.8,
+        valid_fraction: float = 0.2,
+    ) -> Tuple[int, int, int, int]:
+        """
+        Finds a random scene in the reference data that has given minimum
+        fraction of values of values exceeding a given RQI threshold.
+
+        Args:
+            path: The path of the reference data file from which to sample a random
+                scene.
+            rng: A numpy random generator instance to randomize the scene search.
+            multiple: Limits the scene position to coordinates that a multiples
+                of the given value.
+            quality_threshold: If the reference dataset has a quality index,
+                all reference data pixels below the given threshold will considered
+                invalid outputs.
+            valid_fraction: The minimum amount of valid samples in the extracted
+                region.
+
+        Return:
+            A tuple ``(i_start, i_end, j_start, j_end)`` defining the position
+            of the random crop. Or 'None' if no such tuple could be found.
+        """
+        multiple = max(multiple // 4, 1)
+        scene_size = scene_size // 4
+
+        if isinstance(scene_size, (int, float)):
+            scene_size = (int(scene_size),) * 2
+
+        try:
+            with xr.open_dataset(path) as data:
+                qi = 0.5 * (data.rqi.data[1:] + data.rqi.data[:-1])
+
+                rows, cols = np.where(qi > 0.5)
+                n_rows, n_cols = qi.shape
+                valid_rows = (rows > scene_size[0] // 2) * (rows < n_rows - scene_size[0] // 2) * (rows % multiple == 0)
+                valid_cols = (cols > scene_size[1] // 2) * (cols < n_cols - scene_size[1] // 2) * (cols % multiple == 0)
+                rows = rows[valid_rows * valid_cols]
+                cols = cols[valid_rows * valid_cols]
+
+                found = False
+                count = 0
+                while not found:
+                    if count > 20:
+                        return None
+                    ind = rng.choice(rows.size)
+                    i_cntr = rows[ind]
+                    j_cntr = cols[ind]
+
+                    i_start = i_cntr - scene_size[0] // 2
+                    i_end = i_start + scene_size[0]
+                    j_start = j_cntr - scene_size[1] // 2
+                    j_end = j_start + scene_size[1]
+                    row_slice = slice(i_start, i_end)
+                    col_slice = slice(j_start, j_end)
+
+                    if (qi[row_slice, col_slice] > quality_threshold).sum() > 1:
+                        found = True
+                    count += 1
+
+            return (4 * i_start, 4 * i_end, 4 * j_start, 4 * j_end)
+        except Exception as exc:
+            raise exc
+            return None
 
 
 light_precip = LightPrecip()
