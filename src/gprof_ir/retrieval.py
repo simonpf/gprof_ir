@@ -8,6 +8,7 @@ from datetime import datetime
 import logging
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
+import warnings
 
 import click
 from filelock import FileLock
@@ -209,7 +210,8 @@ def cli(
 
     # Load the model
     model = download_model("gprof_ir_ss.pt")
-    model = load_model(model)
+    warnings.filterwarnings("ignore", module="torch")
+    model = torch.compile(load_model(model))
 
     # Inference config
 
