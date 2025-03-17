@@ -1,26 +1,27 @@
 [build-system]
-requires = ["setuptools", "wheel"]
+requires = ["setuptools", "setuptool-scm", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "gprof_ir"
-version = "0.1.0"
 description = "A precipitation retrieval for geostationary IR observations."
 authors = [{ name = "Simon Pfreundschuh", email = "simon.pfreundschuh@colostate.edu" }]
 license = { file = "MIT" }
 readme = "README.md"
 requires-python = ">=3.8"
 dependencies = [
+    "appdirs",
+    "click",
+    "filelock",
+    "huggingface_hub",
     "numpy",
     "pandas",
-    "click",
+    "pytorch_retrieve>=0.1",
     "rich",
-    "appdirs",
     "toml",
-    "huggingface_hub",
-    "pytorch_retrieve",
-    "xarray[io]"
+    "xarray[io]",
 ]
+dynamic = ["version"]
 
 [tool.setuptools]
 packages = ["gprof_ir"]
