@@ -9,8 +9,8 @@ import logging
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 
-
 import click
+from filelock import FileLock
 from huggingface_hub import hf_hub_download
 import numpy as np
 from pytorch_retrieve.inference import InferenceConfig, load_model, run_inference
@@ -31,9 +31,14 @@ def download_model(model_name: str) -> Path:
     """
     repo_id = "simonpf/gprof_ir"
     filename = "gprof_ir_ss.pt"
-    model_path = config.CONFIG.get("model_path")
-    file_path = hf_hub_download(repo_id=repo_id, filename=filename, local_dir=model_path)
-    return file_path
+    model_path = Path(config.CONFIG.get("model_path"))
+    model_file = model_path / filename
+    if not model_file.exists():
+        lock = FileLock(model_file.with_suffix(".lock"))
+        with lock:
+            LOGGER.info("Downloading model to %s", str(model_path))
+            model_file = hf_hub_download(repo_id=repo_id, filename=filename, local_dir=model_path)
+    return model_file
 
 
 class InputLoader:
@@ -166,8 +171,6 @@ class InputLoader:
         return results, filename
 
 
-
-
 @click.argument("input_path", type=str)
 @click.option(
     "--output_path",
@@ -216,6 +219,8 @@ def cli(
         model.output_config,
         inference_config
     )
+    if device == "cpu":
+        inference_config.batch_size = 1
 
     # Input loader
     input_path = Path(input_path)

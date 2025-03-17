@@ -1,5 +1,5 @@
 input_loader = "gprof_ir.retrieval.InputLoader"
-batch_size = 16
+batch_size = 32
 tile_size = [512]
 spatial_overlap = 128
 
