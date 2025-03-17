@@ -1,37 +1,54 @@
 # GPROF IR
 
-The ``gprof_ir`` package provides a precipitation retrieval for geostationary
-IR-window-channel observations to serve as background precipitation fields for
-merged precipitation products.
+**GPROF IR** (`gprof_ir`) is a Python package for precipitation retrievals from geostationary **infrared window-channel observations**. It provides background precipitation fields for **merged precipitation products** to complement passive microwave retrievals from the GPROF and GPROF-NN retrievals.
 
 ## Installation
 
-The ``gprof_ir`` package can be installed via pip:
+`gprof_ir` can be installed directly from GitHub using `pip`:
 
-``` shellsession
+```sh
 pip install git+https://github.com/simonpf/gprof_ir
 ```
 
-## Running retrievals
+## Running Retrievals
 
-The ``gprof_ir`` retrieval can be run directly on GPM [merged IR files](https://disc.gsfc.nasa.gov/datasets/GPM_MERGIR_1/summary). 
+The `gprof_ir retrieval` comman can be run directly on  **GPM merged IR files** ([GPM_MERGIR_1](https://disc.gsfc.nasa.gov/datasets/GPM_MERGIR_1/summary)).
 
-The retrieval can be run on a single file using
+### Running on a Single File
 
-``` shellsession
+To run the retrieval on a single **merged IR file**, use:
+
+```sh
 gprof_ir retrieve merg_2020010100_4km-pixel.nc4
 ```
 
-This will run the retrieval on the file ``merg_2020010100_4km-pixel.nc4`` and write the results to the current working directory.
-Instead of specifying a specific input file, it is also possible to provide a folder to the ``gprof_ir retrieve`` command. The retrieval will then be run for all the merged-IR files found in the directory and its sub-directories.
+This processes the file **`merg_2020010100_4km-pixel.nc4`** and writes the results to the **current working directory**.
 
-> **Note**: ``OMP_NUM_THREADS=1 gprof_ir ...`` can be used to control the number of threads being used when running the retrieval on a CPU.
+### Running on a Directory
 
-The following options are available to modify the default behavior of the ``gprof_ir retrieve`` command:
- 
- - ``--output_path path``: Write retrieval results to ``path`` instead of the current working directory.
- - ``--device``: Run the retrieval on the following device (``cpu, cuda:0, ..., cuda:n``)
- - ``--start_time YYYY-mm-ddTHH:MM:SS``: If the retrieval is run on a directory of files, this optional will cause all files with a time stamp earlier than the given date to be ignored.
- - ``--end_time YYYY-mm-ddTHH:MM:SS``: If the retrieval is run on a directory of files, this optional will cause all files with a time stamp later than the given date to be ignored.
+To process all **merged IR files** in a directory (including subdirectories):
+
+```sh
+gprof_ir retrieve /path/to/directory
+```
+
+### Controlling CPU Threads
+
+By default, `gprof_ir` may use multiple threads when running on a **CPU**. You can limit the number of threads using:
+
+```sh
+OMP_NUM_THREADS=1 gprof_ir retrieve merg_2020010100_4km-pixel.nc4
+```
+
+## Retrieval Options
+
+You can modify the default behavior of `gprof_ir retrieve` using the following options:
+
+| Option | Description |
+|--------|-------------|
+| `--output_path path` | Saves retrieval results to **`path`** instead of the current directory. |
+| `--device` | Specifies the device for computation: **`cpu`**, **`cuda:0`**, ..., **`cuda:n`** (for GPU acceleration). |
+| `--start_time YYYY-mm-ddTHH:MM:SS` | Filters files by **start time** (ignores files **before** this timestamp). |
+| `--end_time YYYY-mm-ddTHH:MM:SS` | Filters files by **end time** (ignores files **after** this timestamp). |
 
 
