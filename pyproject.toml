@@ -13,8 +13,21 @@ requires-python = ">=3.8"
 dependencies = [
     "numpy",
     "pandas",
+    "click",
+    "rich",
+    "appdirs",
+    "toml",
+    "huggingface_hub",
+    "pytorch_retrieve"
 ]
 
 [tool.setuptools]
 packages = ["gprof_ir"]
 package-dir = {"" = "src"}
+
+[project.scripts]
+"gprof_ir" = "gprof_ir.cli:gprof_ir"
+
+
+[tool.setuptools.package-data]
+"gprof_ir" = ["config_files/*.toml"]

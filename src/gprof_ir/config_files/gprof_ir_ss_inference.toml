@@ -1,0 +1,7 @@
+input_loader = "gprof_ir.retrieval.InputLoader"
+batch_size = 128
+tile_size = [512]
+spatial_overlap = 128
+
+[retrieval_output.surface_precip]
+surface_precip = "ExpectedValue"
