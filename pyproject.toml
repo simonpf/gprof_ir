@@ -19,6 +19,7 @@ dependencies = [
     "toml",
     "huggingface_hub",
     "pytorch_retrieve"
+    "xarray[io]"
 ]
 
 [tool.setuptools]
