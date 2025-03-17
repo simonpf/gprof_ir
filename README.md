@@ -12,7 +12,7 @@ pip install git+https://github.com/simonpf/gprof_ir
 
 ## Running Retrievals
 
-The `gprof_ir retrieval` comman can be run directly on  **GPM merged IR files** ([GPM_MERGIR_1](https://disc.gsfc.nasa.gov/datasets/GPM_MERGIR_1/summary)).
+The `gprof_ir retrieval` command can be run directly on  **GPM merged IR files** ([GPM_MERGIR_1](https://disc.gsfc.nasa.gov/datasets/GPM_MERGIR_1/summary)).
 
 ### Running on a Single File
 
