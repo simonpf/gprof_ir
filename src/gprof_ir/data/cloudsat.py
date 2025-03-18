@@ -227,7 +227,7 @@ class LightPrecip(ReferenceDataset):
             }
 
             height, width = rqi.shape
-            rqi = rqi.reshape(height // 4, 4, width // 4, 4)
+            rqi = rqi[:-1].reshape(height // 4, 4, width // 4, 4)
             rqi = rqi.any(axis=1).any(axis=2)
 
             data = xr.Dataset({
@@ -242,9 +242,9 @@ class LightPrecip(ReferenceDataset):
             output_file = output_folder / filename
             if output_file.exists():
                 existing = xr.load_dataset(output_file)
-                sp = existing.surface_precip.data
-                sp_mask = np.isfinite(data.surface_precip.data)
-                sp[sp_mask] = data.surface_precip.data[sp_mask]
+                sp = existing.light_precip.data
+                sp_mask = np.isfinite(data.light_precip.data)
+                sp[sp_mask] = data.light_precip.data[sp_mask]
                 rqi = existing.rqi.data
                 rqi_mask = 0.5 < data.rqi.data
                 rqi[rqi_mask] = 1.0
