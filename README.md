@@ -40,7 +40,7 @@ By default, `gprof_ir` may use multiple threads when running on a **CPU**. You c
 OMP_NUM_THREADS=1 gprof_ir retrieve merg_2020010100_4km-pixel.nc4
 ```
 
-## Retrieval Options
+### Retrieval Options
 
 You can modify the default behavior of `gprof_ir retrieve` using the following options:
 
@@ -52,3 +52,13 @@ You can modify the default behavior of `gprof_ir retrieve` using the following o
 | `--end_time YYYY-mm-ddTHH:MM:SS` | Filters files by **end time** (ignores files **after** this timestamp). |
 
 
+## Configuring the model path
+
+GPROF IR downloads the retrieval model from Hugging Face and stores it locally. By default, the model is saved in the appropriate user data directory (``~/.share/gprof_ir`` on linux).
+
+To change the directory where ``gprof_ir`` stores and loads models, use the following command:
+
+``` shellsession
+
+gprof_ir config set_model_path /new/model/path
+```

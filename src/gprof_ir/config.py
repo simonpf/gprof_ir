@@ -10,6 +10,7 @@ from pathlib import Path
 import toml
 
 from appdirs import user_config_dir, user_data_dir
+import click
 from rich.console import Console
 from rich.table import Table
 
@@ -97,3 +98,21 @@ class ConfigManager:
 
 
 CONFIG = ConfigManager()
+
+
+@click.argument("new_path", type=str)
+def set_model_path(new_path: str) -> int:
+    """
+    Set the model path to NEW_PATH.
+    """
+    new_path = Path(new_path)
+    if not new_path.exists() or not new_path.is_dir():
+        LOGGER.error(
+            "NEW_PATH must point to an existing directory. The provided path %s does not.",
+            new_path
+        )
+        return 1
+    CONFIG.set("model_path", str(new_path))
+    LOGGER.info(
+        "The 'model_path' was updated successfully."
+    )

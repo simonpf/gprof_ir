@@ -10,7 +10,7 @@ import click
 from rich.logging import RichHandler
 
 from . import retrieval
-from .config import CONFIG
+from .config import CONFIG, set_model_path
 
 
 FORMAT = "%(message)s"
@@ -31,12 +31,22 @@ def gprof_ir():
     pass
 
 
-@gprof_ir.command(name="config")
+@gprof_ir.group()
 def config():
+    """
+    Display and set configuration options.
+    """
+
+
+@config.command(name="show")
+def display_config():
     """
     Display configuration.
     """
     CONFIG.print()
 
 
-gprof_ir.command(name="retrieve")(retrieval.cli)
+config.command(name="set_model_path")(set_model_path)
+
+
+gprof_ir.command(name="retrieve", help="Run the GPROF IR retrieval.")(retrieval.cli)
