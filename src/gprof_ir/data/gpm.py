@@ -127,10 +127,10 @@ class GPMCMB(ReferenceDataset):
 
                 rows, cols = np.where(qi > 0.5)
                 n_rows, n_cols = qi.shape
-                valid_rows = (rows > scene_size[0] // 2) * (rows < n_rows - scene_size[0] // 2) * (rows % multiple == 0)
-                valid_cols = (cols > scene_size[1] // 2) * (cols < n_cols - scene_size[1] // 2) * (cols % multiple == 0)
+                valid_rows = (rows > scene_size[0] // 2) * (rows < n_rows - scene_size[0] // 2) * ((rows % multiple) == 0)
+                valid_cols = (cols > scene_size[1] // 2) * (cols < n_cols - scene_size[1] // 2) * ((cols % multiple) == 0)
                 rows = rows[valid_rows * valid_cols]
-                cols = cols[valid_cols * valid_cols]
+                cols = cols[valid_rows * valid_cols]
 
                 found = False
                 count = 0
@@ -263,7 +263,7 @@ class GPMCMB(ReferenceDataset):
                 rqi = existing.rqi.data
                 rqi_mask = 0.5 < data.rqi.data
                 rqi[rqi_mask] = 1.0
-                data.to_netcdf(output_file)
+                data.to_netcdf(output_file, encoding=encoding)
             else:
                 LOGGER.info(
                         "Writing training samples to %s.",
