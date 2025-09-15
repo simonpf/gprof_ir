@@ -31,7 +31,7 @@ def download_model(model_name: str) -> Path:
     Download GPROF-NN 3D model from hugging face.
     """
     repo_id = "simonpf/gprof_ir"
-    filename = "gprof_ir_ss.pt"
+    filename = "gprof_ir_ss_small.pt"
     model_path = Path(config.CONFIG.get("model_path"))
     model_file = model_path / filename
     if not model_file.exists():
@@ -211,7 +211,7 @@ def cli(
     # Load the model
     model = download_model("gprof_ir_ss.pt")
     warnings.filterwarnings("ignore", module="torch")
-    model = torch.compile(load_model(model))
+    model = load_model(model).eval()
 
     # Inference config
 
@@ -236,6 +236,7 @@ def cli(
     if output_path is None:
         output_path = Path(".")
 
+    torch.set_num_threads(8)
     run_inference(
         model,
         input_loader,
