@@ -128,7 +128,7 @@ class GPMCMB(ReferenceDataset):
             scene_size = (int(scene_size),) * 2
 
         try:
-            with xr.open_dataset(path, chunks=None, cache=False) as data:
+            with xr.open_dataset(path, chunks=None, cache=False, engine="h5netcdf") as data:
 
                 qi = data.rqi.data
 
@@ -377,7 +377,7 @@ class GPMGMI(ReferenceDataset):
             scene_size = (int(scene_size),) * 2
 
         try:
-            with xr.open_dataset(path, chunks=None, cache=False) as data:
+            with xr.open_dataset(path, chunks=None, cache=False, engine="h5netcdf") as data:
 
                 qi = data.rqi.data
 
