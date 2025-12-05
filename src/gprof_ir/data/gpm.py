@@ -444,7 +444,8 @@ class GPMGMI(ReferenceDataset):
         })
 
         surface_precip = data.surface_precip.data
-        surface_precip[20:-20] = np.nan
+        surface_precip[:, :20] = np.nan
+        surface_precip[:, -20:] = np.nan
         surface_precip[surface_precip < 0] = np.nan
         lons = data.longitude.data
         lats = data.latitude.data
