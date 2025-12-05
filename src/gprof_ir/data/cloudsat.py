@@ -61,6 +61,7 @@ class LightPrecip(ReferenceDataset):
         super().__init__("light_precip", 8, [RetrievalTarget("light_precip")], quality_index=None)
         self.products = [l2c_precip_column, l2c_snow_profile, l2c_rain_profile]
         self.scale = 8
+        self.spatial_dims = ("latitude", "longitude")
 
     def find_files(
             self,
@@ -292,7 +293,7 @@ class LightPrecip(ReferenceDataset):
             scene_size = (int(scene_size),) * 2
 
         try:
-            with xr.open_dataset(path) as data:
+            with xr.open_dataset(path, chunks=None, cache=False) as data:
                 qi = 0.5 * (data.rqi.data[1:] + data.rqi.data[:-1])
 
                 rows, cols = np.where(qi > 0.5)
@@ -304,6 +305,12 @@ class LightPrecip(ReferenceDataset):
 
                 found = False
                 count = 0
+
+                if rows.size == 0:
+                    data.close()
+                    del data
+                    return None
+
                 while not found:
                     if count > 20:
                         return None
@@ -322,9 +329,10 @@ class LightPrecip(ReferenceDataset):
                         found = True
                     count += 1
 
+            data.close()
+            del data
             return (4 * i_start, 4 * i_end, 4 * j_start, 4 * j_end)
         except Exception as exc:
-            raise exc
             return None
 
 

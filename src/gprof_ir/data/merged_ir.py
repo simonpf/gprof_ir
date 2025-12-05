@@ -49,6 +49,9 @@ class MergedIR(InputDataset):
             n_dim=2,
             spatial_dims=("latitude", "longitude")
         )
+        self.stack = None
+        self.stacking_method = "before"
+        self.stack_drop = 0.3
         self.scale = 4
 
     @property

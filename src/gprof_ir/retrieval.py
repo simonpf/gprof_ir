@@ -209,7 +209,12 @@ def cli(
     """
 
     # Load the model
-    model = download_model("gprof_ir_ss.pt")
+    model_name = "gprof_ir_ss.pt"
+    model_name = "gprof_ir_ss_small.pt"
+    model_name = "gprof_ir_ss_small.pt"
+
+    model = download_model(model_name)
+    print(model)
     warnings.filterwarnings("ignore", module="torch")
     model = load_model(model).eval()
 
@@ -228,8 +233,10 @@ def cli(
     input_path = Path(input_path)
     if not input_path.exists():
         LOGGER.error(
-            "Input path ('%s') must point to an existing file or directory."
+            "Input path ('%s') must point to an existing file or directory.",
+            input_path
         )
+        return 1
     input_loader = InputLoader(input_path)
 
     # Output path

@@ -59,6 +59,5 @@ GPROF IR downloads the retrieval model from Hugging Face and stores it locally. 
 To change the directory where ``gprof_ir`` stores and loads models, use the following command:
 
 ``` shellsession
-
 gprof_ir config set_model_path /new/model/path
 ```
