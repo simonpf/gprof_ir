@@ -7,7 +7,7 @@ This module provides a CHIMP input dataset consisting of the GPM Merged IR obser
 from datetime import datetime, timedelta
 import logging
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Tuple, Union
 
 import numpy as np
 from pansat.products.satellite import gpm
@@ -19,7 +19,7 @@ import xarray as xr
 from chimp.areas import Area
 from chimp.data.input import InputDataset
 from chimp.data.resample import resample_and_split
-from chimp.data.utils import get_output_filename, records_to_paths
+from chimp.data.utils import get_output_filename, records_to_paths, get_date
 
 
 LOGGER = logging.getLogger(__name__)
@@ -49,7 +49,7 @@ class MergedIR(InputDataset):
         InputDataset.__init__(
             self,
             name,
-            name,
+            "merged_ir",
             4,
             "tbs",
             n_dim=2,
@@ -140,6 +140,51 @@ class MergedIR(InputDataset):
                 output_folder / filename
             )
             data_t.to_netcdf(output_folder / filename, encoding=encoding)
+
+
+    def find_training_files(
+            self,
+            path: Union[Path, List[Path]],
+            times: Optional[np.ndarray] = None
+    ) -> Tuple[np.ndarray, List[Path]]:
+        """
+        Find training data files.
+
+        Args:
+            path: Path to the folder the training data for all input
+                and reference datasets.
+            times: Optional array containing valid reference data times for static
+                inputs.
+
+        Return:
+            A tuple ``(times, paths)`` containing the times for which training
+            files are available and the paths pointing to the corresponding file.
+        """
+        pattern = "*????????_??_??.nc"
+        if isinstance(path, str):
+            paths = [Path(path)]
+        elif isinstance(path, Path):
+            paths = [path]
+        elif isinstance(path, list):
+            paths = path
+        else:
+            raise ValueError(
+                "Expected 'path' to be a 'Path' object pointing to a folder "
+                "or a list of 'Path' object pointing to input files. Got "
+                "%s.",
+                path
+            )
+
+        files = []
+        for path in paths:
+            if path.is_dir():
+                files += sorted(list((path / "merged_ir").glob(pattern)))
+            else:
+                if path.match(pattern):
+                    files.append(path)
+
+        times = np.array(list(map(get_date, files)))
+        return times, files
 
 
 merged_ir = MergedIR()
