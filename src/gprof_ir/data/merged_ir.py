@@ -39,19 +39,25 @@ class MergedIR(InputDataset):
     """
     Represents input data derived from merged IR data.
     """
-    def __init__(self):
+    def __init__(
+            self,
+            stack: Optional[int] = None
+    ):
+        name = "merged_ir"
+        if stack is not None:
+            name = f"merged_ir_{stack}"
         InputDataset.__init__(
             self,
-            "merged_ir",
-            "merged_ir",
+            name,
+            name,
             4,
             "tbs",
             n_dim=2,
             spatial_dims=("latitude", "longitude")
         )
-        self.stack = None
+        self.stack = stack
         self.stacking_method = "before"
-        self.stack_drop = 0.3
+        self.stack_drop = 0.2
         self.scale = 4
 
     @property
@@ -137,3 +143,5 @@ class MergedIR(InputDataset):
 
 
 merged_ir = MergedIR()
+merged_ir_3 = MergedIR(stack=3)
+merged_ir_5 = MergedIR(stack=5)
