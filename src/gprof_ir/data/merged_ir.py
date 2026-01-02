@@ -19,7 +19,8 @@ import xarray as xr
 from chimp.areas import Area
 from chimp.data.input import InputDataset
 from chimp.data.resample import resample_and_split
-from chimp.data.utils import get_output_filename, records_to_paths, get_date
+from chimp.data.utils import get_output_filename, records_to_paths
+from chimp.utils import get_date
 
 
 LOGGER = logging.getLogger(__name__)

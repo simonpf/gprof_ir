@@ -4,7 +4,8 @@ gprof_ir.retrieval
 
 Provides functionality to run the GPROF IR retrieval on GPM merged IR input files.
 """
-from datetime import datetime
+from datetime import datetime, timedelta
+from importlib.metadata import version
 import logging
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
@@ -14,6 +15,7 @@ import click
 from filelock import FileLock
 from huggingface_hub import hf_hub_download
 import numpy as np
+from pytorch_retrieve.architectures import RetrievalModel
 from pytorch_retrieve.inference import InferenceConfig, load_model, run_inference
 from scipy.ndimage import binary_closing
 import torch
@@ -26,12 +28,15 @@ from . import config
 LOGGER = logging.getLogger(__name__)
 
 
-def download_model(model_name: str) -> Path:
+def download_model(variant: str = "gmi", n_steps: Optional[int] = None) -> Path:
     """
     Download GPROF-NN 3D model from hugging face.
     """
     repo_id = "simonpf/gprof_ir"
-    filename = "gprof_ir_ss_small.pt"
+    if n_steps in [None, 1]:
+        filename = f"gprof_ir_{variant}.pt"
+    else:
+        filename = f"gprof_ir_{variant}_{n_steps}.pt"
     model_path = Path(config.CONFIG.get("model_path"))
     model_file = model_path / filename
     if not model_file.exists():
@@ -42,6 +47,64 @@ def download_model(model_name: str) -> Path:
     return model_file
 
 
+def load_inference_config(
+        model: RetrievalModel,
+        device: "str"
+) -> InferenceConfig:
+    """
+    Load inference config for GPROF-IR model.
+
+    Args:
+        model:
+    """
+    config_path = Path(__file__).parent / "config_files" / "gprof_ir_ss_inference.toml"
+    inference_config = toml.loads(open(config_path).read())
+    inference_config = InferenceConfig.parse(
+        model.output_config,
+        inference_config
+    )
+    if device == "cpu":
+        inference_config.batch_size = 1
+    return inference_config
+
+
+def get_previous_merged_ir_file(path: Path) -> Path:
+    """
+    Get path pointing to merged-IR file before the current input file.
+    """
+    path = Path(path)
+    date = datetime.strptime(path.name.split("_")[1], "%Y%m%d%H")
+    previous_date = date - timedelta(hours=1)
+    fname = previous_date.strftime("merg_%Y%m%d%H_4km-pixel.nc4")
+    return path.parent / fname
+
+
+def load_ir_tbs_multi_step(path, n_steps: int) -> Path:
+    """
+    Get path pointing to merged-IR file before the current input file.
+    """
+    data = []
+    curr_path = path
+    files = [path]
+    for _ in range((n_steps - 1) // 2):
+        curr_path = get_previous_merged_ir_file(curr_path)
+        files.append(curr_path)
+
+    for path in files:
+        if path.exists():
+            data.append(xr.load_dataset(path))
+        else:
+            LOGGER.warning(
+                "Tried loading previous IR data from %s but the file doesn't exist.",
+                path
+            )
+            dummy = data[-1].copy()
+            dummy.Tb.data[:] = np.nan
+
+    data = xr.concat(data, dim="time").sortby("time")
+    return data
+
+
 class InputLoader:
     """
     Input loader for loading merged IR input observations.
@@ -49,12 +112,18 @@ class InputLoader:
     def __init__(
             self,
             path: Path,
+            variant: str,
+            n_steps: int,
             start_time: Optional[np.datetime64] = None,
-            end_time: Optional[np.datetime64] = None
+            end_time: Optional[np.datetime64] = None,
     ):
         """
         Args:
             path: A path object pointing to a directory containing the GPM merged IR files.
+            n_steps: The numebr of input steps to load.
+            variant: The model variant being run.
+            start_time: If given, limits processing to files with timestamps at or after the given start time.
+            start_time: If given, limites processing to files with timestamps earlier than the given end_time.
         """
         path = Path(path)
         if path.is_dir():
@@ -77,6 +146,8 @@ class InputLoader:
             )
         else:
             self.files = [path]
+        self.variant = variant
+        self.n_steps = n_steps
 
     def __len__(self) -> int:
         return len(self.files)
@@ -92,10 +163,21 @@ class InputLoader:
             A tuple ``(inpt, aux, filename)`` containing the retrieval input as PyTorch tensors in
             ``inpt``, auxiliary data in ``aux``, and the input filename.
         """
-        input_data = xr.load_dataset(path)
-        inpt = {
-        "merged_ir": torch.tensor(input_data.Tb.data[:, None])
-        }
+        if self.n_steps == 1:
+            input_data = xr.load_dataset(path)
+            inpt = {
+                "merged_ir": torch.tensor(input_data.Tb.data[:, None])
+            }
+        else:
+            input_data = load_ir_tbs_multi_step(path, n_steps=self.n_steps)
+            n_times = input_data.time.size
+            inpt = {
+                "merged_ir": torch.stack([
+                    torch.tensor(input_data.Tb.data[n_times - self.n_steps - 1: n_times - 1]),
+                    torch.tensor(input_data.Tb.data[n_times - self.n_steps: n_times])
+                ])
+            }
+            input_data = input_data[{"time": slice(n_times - 2, n_times)}]
 
         # Calculate invalid input mask
         valid = np.isfinite(input_data.Tb.data)
@@ -108,10 +190,12 @@ class InputLoader:
         lons = 0.5 * (lons[0::2] + lons[1::2])
 
         aux = {
-        "latitude": lats,
-        "longitude": lons,
-        "time": input_data.time.data,
-        "valid_input": valid[..., ::2, ::2]
+            "latitude": lats,
+            "longitude": lons,
+            "time": input_data.time.data,
+            "valid_input": valid[..., ::2, ::2],
+            "n_steps": self.n_steps,
+            "variant": self.variant
         }
         date_str = path.stem.split("_")[1]
         return inpt, aux, f"gprof_ir_{date_str}.nc"
@@ -169,6 +253,9 @@ class InputLoader:
         results.quality_flag.attrs["meaning"] = (
             "0: Good quality, 1: Missing input, 2: Invalid value returned from retrieval"
         )
+        results.attrs["algorithm"] = f"gprof_ir, version {version('gprof_ir')}"
+        results.attrs["variant"] = self.variant
+        results.attrs["n_steps"] = self.n_steps
         return results, filename
 
 
@@ -198,36 +285,63 @@ class InputLoader:
         "The floating point type to use for inference."
     )
 )
+@click.option(
+    "--variant",
+    type=str,
+    default="gmi",
+    help=(
+        "The model variant: 'gmi' or 'cmb'."
+    )
+)
+@click.option(
+    "--n_steps",
+    type=int,
+    default=3,
+    help=(
+        "The number of input steps: None, 3, or 5"
+    )
+)
 def cli(
         input_path: Path,
         output_path: Optional[Path] = None,
         device: str = "cpu",
         dtype: str = "float32",
+        variant: str = "gmi",
+        n_steps: Optional[int] = None
 ) -> None:
     """
     Run GPROF IR retrieval on INPUT_PATH.
     """
 
     # Load the model
-    model_name = "gprof_ir_ss.pt"
-    model_name = "gprof_ir_ss_small.pt"
-    model_name = "gprof_ir_ss_small.pt"
+    variant = variant.lower()
+    valid = ["gmi", "cmb"]
+    if variant not in valid:
+        raise ValueError(
+            f"'variant' must be one of {valid}."
+        )
+        return 1
 
-    model = download_model(model_name)
-    print(model)
+    # Ensure that n_steps is not None only for GMI variant and that n_steps is either 3 or 5.
+    if n_steps in [3, 5] and variant == "cmb":
+        raise ValueError(
+            f"Multiple input steps are only available for the 'gmi' variant."
+        )
+        return 1
+    valid = [1, 3, 5]
+    if n_steps not in valid:
+        raise ValueError(
+            f"'n_steps' must be one of {valid}."
+        )
+        return 1
+
+    model = download_model(variant=variant, n_steps=n_steps)
     warnings.filterwarnings("ignore", module="torch")
     model = load_model(model).eval()
+    n_steps = model.encoder.stages[0].projection.weight.shape[1]
 
     # Inference config
-
-    config_path = Path(__file__).parent / "config_files" / "gprof_ir_ss_inference.toml"
-    inference_config = toml.loads(open(config_path).read())
-    inference_config = InferenceConfig.parse(
-        model.output_config,
-        inference_config
-    )
-    if device == "cpu":
-        inference_config.batch_size = 1
+    inference_config = load_inference_config(model, device)
 
     # Input loader
     input_path = Path(input_path)
@@ -237,7 +351,7 @@ def cli(
             input_path
         )
         return 1
-    input_loader = InputLoader(input_path)
+    input_loader = InputLoader(input_path, n_steps=n_steps, variant=variant)
 
     # Output path
     if output_path is None:
