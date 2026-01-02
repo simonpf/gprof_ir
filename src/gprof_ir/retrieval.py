@@ -234,6 +234,7 @@ class InputLoader:
 
         invalid = (surface_precip < -0.01) * (surface_precip > 200)
         surface_precip[invalid] = np.nan
+        surface_precip = np.maximum(surface_precip, 0.0)
         quality[invalid] = 2
 
         valid_input = aux["valid_input"]
