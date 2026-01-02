@@ -4,6 +4,7 @@ gprof_ir.cli
 
 Defines the command line interface for GPROF IR.
 """
+from importlib.metadata import version
 import logging
 
 import click
@@ -24,12 +25,12 @@ logging.basicConfig(
 
 
 @click.group()
+@click.version_option(version("gprof_ir"))
 def gprof_ir():
     """
     The command line interface for the GPROF IR preciptiation retrieval.
     """
     pass
-
 
 @gprof_ir.group()
 def config():
