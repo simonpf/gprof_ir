@@ -5,9 +5,13 @@ import subprocess
 
 import numpy as np
 import pytest
+import torch
 import xarray as xr
 
 from gprof_ir.retrieval import InputLoader
+
+
+HAS_CUDA = torch.cuda.is_available()
 
 
 def test_input_loader(retrieval_input_data):
@@ -19,6 +23,7 @@ def test_input_loader(retrieval_input_data):
         retrieval_input_data,
         "gmi",
         1,
+        input_format="netcdf"
     )
     assert len(input_loader) == 1
     inpt, aux, fname = input_loader[0]
@@ -29,6 +34,7 @@ def test_input_loader(retrieval_input_data):
         retrieval_input_data / "merg_2020010100_4km-pixel.nc4",
         "gmi",
         1,
+        input_format="netcdf"
     )
     assert len(input_loader) == 1
     inpt, aux, fname = input_loader[0]
@@ -40,6 +46,7 @@ def test_input_loader(retrieval_input_data):
         "gmi",
         1,
         start_time=np.datetime64("2021-01-01"),
+        input_format="netcdf"
     )
     assert len(input_loader) == 0
 
@@ -48,6 +55,7 @@ def test_input_loader(retrieval_input_data):
         "gmi",
         1,
         end_time=np.datetime64("2019-12-31"),
+        input_format="netcdf"
     )
     assert len(input_loader) == 0
 
@@ -80,6 +88,37 @@ def test_retrieval(
         assert results.attrs["n_steps"] == 1
 
 
+@pytest.mark.skipif(not HAS_CUDA, reason="cuda not available")
+@pytest.mark.parametrize("variant", ["cmb", "gmi"])
+def test_retrieval(
+        retrieval_input_data_binary,
+        tmp_path,
+        variant
+):
+    """
+    Test running the GPROF IR retrieval.
+    """
+    args = [
+        "gprof_ir",
+        "retrieve",
+        str(retrieval_input_data_binary / "merg_2018010100_4km-pixel"),
+        "--output_path",
+        str(tmp_path),
+        "--variant",
+        variant,
+        "--n_steps",
+        "1",
+        "--device",
+        "cuda:0"
+    ]
+    subprocess.run(args)
+    assert (tmp_path / "gprof_ir_2018010100.nc").exists()
+    with xr.open_dataset(tmp_path / "gprof_ir_2018010100.nc") as results:
+        assert "algorithm" in results.attrs
+        assert results.attrs["variant"] == variant
+        assert results.attrs["n_steps"] == 1
+
+
 @pytest.mark.parametrize("n_steps", ["3"])
 def test_multi_step_retrieval(
         retrieval_input_data,
@@ -106,3 +145,51 @@ def test_multi_step_retrieval(
         assert "algorithm" in results.attrs
         assert results.attrs["variant"] == "gmi"
         assert results.attrs["n_steps"] == int(n_steps)
+
+
+@pytest.mark.parametrize("variant", ["gmi"])
+def test_binary_output(
+        retrieval_input_data,
+        tmp_path,
+        variant
+):
+    """
+    Test running the GPROF IR retrieval.
+    """
+    args = [
+        "gprof_ir",
+        "retrieve",
+        str(retrieval_input_data / "merg_2020010100_4km-pixel.nc4"),
+        "--output_path",
+        str(tmp_path),
+        "--variant",
+        variant,
+        "--n_steps",
+        "1"
+    ]
+    subprocess.run(args)
+    assert (tmp_path / "gprof_ir_2020010100.nc").exists()
+    with xr.open_dataset(tmp_path / "gprof_ir_2020010100.nc") as results:
+        assert "algorithm" in results.attrs
+        assert results.attrs["variant"] == variant
+        assert results.attrs["n_steps"] == 1
+        sp_ref = results.surface_precip.data
+    sp_ref = np.roll(np.flip(sp_ref, 1), sp_ref.shape[-1] // 2, -1)
+
+    args = [
+        "gprof_ir",
+        "retrieve",
+        str(retrieval_input_data / "merg_2020010100_4km-pixel.nc4"),
+        "--output_path",
+        str(tmp_path),
+        "--variant",
+        variant,
+        "--n_steps",
+        "1",
+        "--output_format",
+        "binary"
+    ]
+    subprocess.run(args)
+    assert (tmp_path / "gprof_ir_2020010100.bin").exists()
+    sp_flat = np.fromfile(tmp_path / "gprof_ir_2020010100.bin", dtype="f4")
+    assert np.isclose(sp_ref.flatten(), sp_flat).all()

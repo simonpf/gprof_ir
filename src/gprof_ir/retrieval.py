@@ -6,9 +6,10 @@ Provides functionality to run the GPROF IR retrieval on GPM merged IR input file
 """
 from datetime import datetime, timedelta
 from importlib.metadata import version
+import gzip
 import logging
 from pathlib import Path
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 import warnings
 
 import click
@@ -26,6 +27,45 @@ from . import config
 
 
 LOGGER = logging.getLogger(__name__)
+
+
+def load_input_data(path: Path) -> np.ndarray:
+    """
+    Load brightness temperatures from NetCDF file.
+    """
+    path = Path(path)
+    if path.suffix.startswith(".nc"):
+        return xr.load_dataset(path)
+    elif path.suffix == "":
+        with open(path, "rb") as f:
+            buf = f.read()
+    elif path.suffix == "gz":
+        with gzip.open(path, "rb") as f:
+            buf = f.read()
+    else:
+        raise ValueError(
+            "Encoutered input file with unsupported extension '%s'. Expected '.nc4', '.gz', or ''.",
+            path.suffix
+        )
+
+    raw = np.frombuffer(buf, dtype="u1").reshape(9896, 3298, 2, order='F')
+    mask = raw == 255
+    tbs = raw + 75.0
+    tbs[mask] = np.nan
+    tbs = np.transpose(tbs, (2, 1, 0))
+    tbs = np.flip(np.roll(tbs, 9896 // 2, -1), 1)
+
+    lons = np.linspace(-179.98181, 179.98181, 9896)
+    lats = np.linspace(-59.981808, 59.981808, 3298)
+    time = np.datetime64(datetime.strptime(path.stem, "merg_%Y%m%d%H_4km-pixel"))
+    times = np.array([time, time + np.timedelta64(30, "m")])
+
+    return xr.Dataset({
+        "time": (("time",), times),
+        "lat": (("lat",), lats),
+        "lon": (("lon",), lons),
+        "Tb": (("time", "lat", "lon"), tbs.copy()),
+    })
 
 
 def download_model(variant: str = "gmi", n_steps: Optional[int] = None) -> Path:
@@ -75,7 +115,7 @@ def get_previous_merged_ir_file(path: Path) -> Path:
     path = Path(path)
     date = datetime.strptime(path.name.split("_")[1], "%Y%m%d%H")
     previous_date = date - timedelta(hours=1)
-    fname = previous_date.strftime("merg_%Y%m%d%H_4km-pixel.nc4")
+    fname = previous_date.strftime("merg_%Y%m%d%H_4km-pixel") + path.suffix
     return path.parent / fname
 
 
@@ -92,14 +132,15 @@ def load_ir_tbs_multi_step(path, n_steps: int) -> Path:
 
     for path in files:
         if path.exists():
-            data.append(xr.load_dataset(path))
+            data.append(load_input_data(path))
         else:
             LOGGER.warning(
                 "Tried loading previous IR data from %s but the file doesn't exist.",
                 path
             )
-            dummy = data[-1].copy()
+            dummy = data[-1].copy(deep=True)
             dummy.Tb.data[:] = np.nan
+            data.append(dummy)
 
     data = xr.concat(data, dim="time").sortby("time")
     return data
@@ -116,6 +157,9 @@ class InputLoader:
             n_steps: int,
             start_time: Optional[np.datetime64] = None,
             end_time: Optional[np.datetime64] = None,
+            input_format: Optional[str] = None,
+            output_format: str = "netcdf",
+            output_path: Optional[Path] = None
     ):
         """
         Args:
@@ -124,10 +168,20 @@ class InputLoader:
             variant: The model variant being run.
             start_time: If given, limits processing to files with timestamps at or after the given start time.
             start_time: If given, limites processing to files with timestamps earlier than the given end_time.
+            input_format: String specifying the format of the input data.
         """
         path = Path(path)
         if path.is_dir():
-            files = sorted(list(path.glob("**/merg_*.nc?")))
+            if input_format is None:
+                files = sorted(list(path.glob("**/merg_??????????_4km-pixel*")))
+            elif input_format.lower() in ["nc", "netcdf"]:
+                files = sorted(list(path.glob("**/merg_??????????_4km-pixel.nc?")))
+            else:
+                raise ValueError(
+                    "Unknown input data format it should either be 'bin' or 'binary' for binary format "
+                    "or 'nc' or 'netcdf' for NetCDF4 format."
+                )
+
             filtered = []
             for path in files:
                 date = np.datetime64(datetime.strptime(path.name.split("_")[1], "%Y%m%d%H"))
@@ -149,6 +203,13 @@ class InputLoader:
         self.variant = variant
         self.n_steps = n_steps
 
+        self.output_format = output_format
+        if output_path is None:
+            output_path = Path(".")
+        else:
+            output_path = Path(output_path)
+        self.output_path = output_path
+
     def __len__(self) -> int:
         return len(self.files)
 
@@ -164,7 +225,7 @@ class InputLoader:
             ``inpt``, auxiliary data in ``aux``, and the input filename.
         """
         if self.n_steps == 1:
-            input_data = xr.load_dataset(path)
+            input_data = load_input_data(path)
             inpt = {
                 "merged_ir": torch.tensor(input_data.Tb.data[:, None])
             }
@@ -241,6 +302,11 @@ class InputLoader:
         surface_precip[~valid_input] = np.nan
         quality[~valid_input] = 1
 
+        if self.output_format != "netcdf":
+            surface_precip = np.roll(np.flip(surface_precip, -2), surface_precip.shape[-1] // 2, -1)
+            output_path = self.output_path / (filename[:-3]  + ".bin")
+            surface_precip.flatten(order='C').tofile(output_path)
+
         results = xr.Dataset({
             "latitude": (("latitude",), aux["latitude"]),
             "longitude": (("longitude",), aux["longitude"]),
@@ -258,6 +324,92 @@ class InputLoader:
         results.attrs["variant"] = self.variant
         results.attrs["n_steps"] = self.n_steps
         return results, filename
+
+
+def run_retrieval(
+        input_path: Path,
+        output_path: Optional[Path] = None,
+        device: str = "cpu",
+        dtype: str = "float32",
+        variant: str = "gmi",
+        n_steps: int = 1,
+        output_format: str = "netcdf",
+) -> List[xr.Dataset]:
+    """
+    Run GPROF-IR retrieval on given input data.
+
+    Args:
+        input_path: A path pointing to a single file or a folder containing merged IR input files.
+        output_path: The path to which to write the output.
+        device: The device to run the retrieval on. dtype: The dtype to use for running theretrieval.
+        variant: String identifying the GPROF-IR variant to run.
+        n_steps: The number of input steps to run.
+        output_format: The format to use to write the output files.
+
+    Return:
+        A list of xarray.Datasets containing the results for all input files.
+    """
+
+    # Load the model
+    variant = variant.lower()
+    valid = ["gmi", "cmb"]
+    if variant not in valid:
+        raise ValueError(
+            f"'variant' must be one of {valid}."
+        )
+        return 1
+
+    # Ensure that n_steps is not None only for GMI variant and that n_steps is either 3 or 5.
+    if n_steps in [3, 5] and variant == "cmb":
+        raise ValueError(
+            f"Multiple input steps are only available for the 'gmi' variant."
+        )
+        return 1
+    valid = [1, 3, 5]
+    if n_steps not in valid:
+        raise ValueError(
+            f"'n_steps' must be one of {valid}."
+        )
+        return 1
+
+    if output_format.lower() not in ["binary", "netcdf"]:
+        raise ValueError(
+            "'outpu_format' should be one of ['binary', 'netcdf']."
+        )
+
+    model = download_model(variant=variant, n_steps=n_steps)
+    warnings.filterwarnings("ignore", module="torch")
+    model = load_model(model).eval()
+    n_steps = model.encoder.stages[0].projection.weight.shape[1]
+
+    # Inference config
+    inference_config = load_inference_config(model, device)
+
+    # Input loader
+    input_path = Path(input_path)
+    if not input_path.exists():
+        LOGGER.error(
+            "Input path ('%s') must point to an existing file or directory.",
+            input_path
+        )
+        return 1
+    input_loader = InputLoader(
+        input_path,
+        n_steps=n_steps,
+        variant=variant,
+        output_format=output_format,
+        output_path=output_path
+    )
+
+    torch.set_num_threads(8)
+    return run_inference(
+        model,
+        input_loader,
+        inference_config,
+        output_path=output_path,
+        device=device,
+        dtype=dtype,
+    )
 
 
 @click.argument("input_path", type=str)
@@ -302,68 +454,40 @@ class InputLoader:
         "The number of input steps: None, 3, or 5"
     )
 )
+@click.option(
+    "--output_format",
+    type=str,
+    default="netcdf",
+    help=(
+        "The format used to store the retrieval results. Shoule be 'netcdf' for NetCDF4 format"
+        " (default) or 'binary' for GPROF binary format."
+    )
+)
 def cli(
         input_path: Path,
         output_path: Optional[Path] = None,
         device: str = "cpu",
         dtype: str = "float32",
         variant: str = "gmi",
-        n_steps: Optional[int] = None
+        n_steps: Optional[int] = None,
+        output_format: str = "netcdf"
 ) -> None:
     """
     Run GPROF IR retrieval on INPUT_PATH.
     """
-
-    # Load the model
-    variant = variant.lower()
-    valid = ["gmi", "cmb"]
-    if variant not in valid:
-        raise ValueError(
-            f"'variant' must be one of {valid}."
-        )
-        return 1
-
-    # Ensure that n_steps is not None only for GMI variant and that n_steps is either 3 or 5.
-    if n_steps in [3, 5] and variant == "cmb":
-        raise ValueError(
-            f"Multiple input steps are only available for the 'gmi' variant."
-        )
-        return 1
-    valid = [1, 3, 5]
-    if n_steps not in valid:
-        raise ValueError(
-            f"'n_steps' must be one of {valid}."
-        )
-        return 1
-
-    model = download_model(variant=variant, n_steps=n_steps)
-    warnings.filterwarnings("ignore", module="torch")
-    model = load_model(model).eval()
-    n_steps = model.encoder.stages[0].projection.weight.shape[1]
-
-    # Inference config
-    inference_config = load_inference_config(model, device)
-
-    # Input loader
-    input_path = Path(input_path)
-    if not input_path.exists():
-        LOGGER.error(
-            "Input path ('%s') must point to an existing file or directory.",
-            input_path
-        )
-        return 1
-    input_loader = InputLoader(input_path, n_steps=n_steps, variant=variant)
-
     # Output path
     if output_path is None:
         output_path = Path(".")
 
-    torch.set_num_threads(8)
-    run_inference(
-        model,
-        input_loader,
-        inference_config,
+    res = run_retrieval(
+        input_path=input_path,
         output_path=output_path,
         device=device,
         dtype=dtype,
+        variant=variant,
+        n_steps=n_steps,
+        output_format=output_format
     )
+    # Return error code.
+    if isinstance(res, int):
+        return res

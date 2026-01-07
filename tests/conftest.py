@@ -24,3 +24,18 @@ def retrieval_input_data():
         local_dir=model_path
     )
     return model_path / "test_data"
+
+
+@pytest.fixture(scope="session")
+def retrieval_input_data_binary():
+    """
+    Fixture to download and cache a test file from a Hugging Face repository.
+    The file is stored in a session-scoped temp directory to avoid re-downloading.
+    """
+    model_path = Path(CONFIG.get("model_path"))
+    file_path = hf_hub_download(
+        repo_id="simonpf/gprof_ir",
+        filename="test_data/merg_2018010100_4km-pixel",
+        local_dir=model_path
+    )
+    return model_path / "test_data"
