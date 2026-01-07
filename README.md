@@ -48,8 +48,11 @@ You can modify the default behavior of `gprof_ir retrieve` using the following o
 |--------|-------------|
 | `--output_path path` | Saves retrieval results to **`path`** instead of the current directory. |
 | `--device` | Specifies the device for computation: **`cpu`**, **`cuda:0`**, ..., **`cuda:n`** (for GPU acceleration). |
-| `--start_time YYYY-mm-ddTHH:MM:SS` | Filters files by **start time** (ignores files **before** this timestamp). |
-| `--end_time YYYY-mm-ddTHH:MM:SS` | Filters files by **end time** (ignores files **after** this timestamp). |
+| `--dtype` | Specifies the floating point type to use for computation |
+| `--variant` | Specifies the model variant to use for the retrieval: ``cmb`` for the retrieval trained on 2B-CMB precipitation or ``gmi`` for the model trained on GPROF V8 GMI retirevals.|
+| `--n_steps` | Specifies the number of input timesteps to use for the ``gmi`` retrieval variant. Should be ``1``, ``3``, or ``5``.|
+| `--output_format` | Specifies the output format to use for the results. ``netcdf`` for NetCDF4 format (the default) or ``binary`` for binary output format.|
+
 
 
 ## Configuring the model path
