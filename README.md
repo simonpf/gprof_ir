@@ -37,7 +37,7 @@ gprof_ir retrieve /path/to/directory
 By default, `gprof_ir` may use multiple threads when running on a **CPU**. You can limit the number of threads using:
 
 ```sh
-OMP_NUM_THREADS=1 gprof_ir retrieve merg_2020010100_4km-pixel.nc4
+gprof_ir retrieve merg_2020010100_4km-pixel.nc4 --n_threads 1
 ```
 
 ### Retrieval Options

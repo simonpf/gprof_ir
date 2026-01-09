@@ -8,6 +8,7 @@ from datetime import datetime, timedelta
 from importlib.metadata import version
 import gzip
 import logging
+import os
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 import warnings
@@ -337,6 +338,7 @@ def run_retrieval(
         output_format: str = "netcdf",
         start_time: Optional[np.datetime64] = None,
         end_time: Optional[np.datetime64] = None,
+        n_threads: int = 8,
 ) -> List[xr.Dataset]:
     """
     Run GPROF-IR retrieval on given input data.
@@ -350,6 +352,7 @@ def run_retrieval(
         output_format: The format to use to write the output files.
         start_time: Optional start time to limit the input files being considered.
         end_time: Optional end time to limit the input files being considered.
+        n_threads: The number of threads to use for CPU processing.
 
     Return:
         A list of xarray.Datasets containing the results for all input files.
@@ -407,8 +410,7 @@ def run_retrieval(
         start_time=start_time,
         end_time=end_time
     )
-
-    torch.set_num_threads(8)
+    torch.set_num_threads(n_threads)
     return run_inference(
         model,
         input_loader,
@@ -486,6 +488,12 @@ def run_retrieval(
         "Optional end time in YYYY-MM-DDTHH:MM:SS format to limit the input files to consider."
     )
 )
+@click.option(
+    "--n_threads",
+    type=int,
+    default=8,
+    help="The number of threads to use for CPU processing."
+)
 def cli(
         input_path: Path,
         output_path: Optional[Path] = None,
@@ -495,7 +503,8 @@ def cli(
         n_steps: Optional[int] = None,
         output_format: str = "netcdf",
         start_time: Optional[np.datetime64] = None,
-        end_time: Optional[np.datetime64] = None
+        end_time: Optional[np.datetime64] = None,
+        n_threads: int = 8
 ) -> None:
     """
     Run GPROF IR retrieval on INPUT_PATH.
@@ -533,7 +542,8 @@ def cli(
         n_steps=n_steps,
         output_format=output_format,
         start_time=start_time,
-        end_time=end_time
+        end_time=end_time,
+        n_threads=n_threads
     )
     # Return error code.
     if isinstance(res, int):

@@ -24,6 +24,9 @@ logging.basicConfig(
 )
 
 
+LOGGER = logging.getLogger(__name__)
+
+
 @click.group()
 @click.version_option(version("gprof_ir"))
 def gprof_ir():
@@ -32,12 +35,12 @@ def gprof_ir():
     """
     pass
 
+
 @gprof_ir.group()
 def config():
     """
     Display and set configuration options.
     """
-
 
 @config.command(name="show")
 def display_config():
@@ -51,3 +54,34 @@ config.command(name="set_model_path")(set_model_path)
 
 
 gprof_ir.command(name="retrieve", help="Run the GPROF IR retrieval.")(retrieval.cli)
+
+
+@gprof_ir.command(name="download_models")
+@click.option(
+    "--all",
+    is_flag=True,
+    help="Forces download of all models instead of just the default model."
+)
+def download_models(all: bool = True):
+    """
+    Download GPROF-IR models required for inference.
+    """
+    from .retrieval import download_model
+    if all:
+        download_model("cmb")
+        LOGGER.info(
+            "Downloaded CMB, 1-timestep model."
+        )
+        download_model("gmi")
+        LOGGER.info(
+            "Downloaded GMI, 1-timestep model."
+        )
+        download_model("gmi", 3)
+        LOGGER.info(
+            "Downloaded GMI, 3-timestep model."
+        )
+    else:
+        download_model("gmi", 3)
+        LOGGER.info(
+            "Downloaded GMI, 3-timestep model."
+        )
