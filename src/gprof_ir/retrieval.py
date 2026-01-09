@@ -306,6 +306,7 @@ class InputLoader:
             surface_precip = np.roll(np.flip(surface_precip, -2), surface_precip.shape[-1] // 2, -1)
             output_path = self.output_path / (filename[:-3]  + ".bin")
             surface_precip.flatten(order='C').tofile(output_path)
+            return None
 
         results = xr.Dataset({
             "latitude": (("latitude",), aux["latitude"]),
@@ -334,6 +335,8 @@ def run_retrieval(
         variant: str = "gmi",
         n_steps: int = 1,
         output_format: str = "netcdf",
+        start_time: Optional[np.datetime64] = None,
+        end_time: Optional[np.datetime64] = None,
 ) -> List[xr.Dataset]:
     """
     Run GPROF-IR retrieval on given input data.
@@ -345,6 +348,8 @@ def run_retrieval(
         variant: String identifying the GPROF-IR variant to run.
         n_steps: The number of input steps to run.
         output_format: The format to use to write the output files.
+        start_time: Optional start time to limit the input files being considered.
+        end_time: Optional end time to limit the input files being considered.
 
     Return:
         A list of xarray.Datasets containing the results for all input files.
@@ -398,7 +403,9 @@ def run_retrieval(
         n_steps=n_steps,
         variant=variant,
         output_format=output_format,
-        output_path=output_path
+        output_path=output_path,
+        start_time=start_time,
+        end_time=end_time
     )
 
     torch.set_num_threads(8)
@@ -463,6 +470,22 @@ def run_retrieval(
         " (default) or 'binary' for GPROF binary format."
     )
 )
+@click.option(
+    "--start_time",
+    type=str,
+    default=None,
+    help=(
+        "Optional start time in YYYY-MM-DDTHH:MM:SS format to limit the input files to consider."
+    )
+)
+@click.option(
+    "--end_time",
+    type=str,
+    default=None,
+    help=(
+        "Optional end time in YYYY-MM-DDTHH:MM:SS format to limit the input files to consider."
+    )
+)
 def cli(
         input_path: Path,
         output_path: Optional[Path] = None,
@@ -470,7 +493,9 @@ def cli(
         dtype: str = "float32",
         variant: str = "gmi",
         n_steps: Optional[int] = None,
-        output_format: str = "netcdf"
+        output_format: str = "netcdf",
+        start_time: Optional[np.datetime64] = None,
+        end_time: Optional[np.datetime64] = None
 ) -> None:
     """
     Run GPROF IR retrieval on INPUT_PATH.
@@ -479,6 +504,26 @@ def cli(
     if output_path is None:
         output_path = Path(".")
 
+    if start_time is not None:
+        try:
+            start_time = np.datetime64(start_time)
+        except ValueError as err:
+            LOGGER.error(
+                "Error parsing start time '%s'",
+                start_time
+            )
+            return 1
+
+    if end_time is not None:
+        try:
+            end_time = np.datetime64(end_time)
+        except ValueError as err:
+            LOGGER.error(
+                "Error parsing end time '%s'",
+                end_time
+            )
+            return 1
+
     res = run_retrieval(
         input_path=input_path,
         output_path=output_path,
@@ -486,7 +531,9 @@ def cli(
         dtype=dtype,
         variant=variant,
         n_steps=n_steps,
-        output_format=output_format
+        output_format=output_format,
+        start_time=start_time,
+        end_time=end_time
     )
     # Return error code.
     if isinstance(res, int):
