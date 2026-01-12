@@ -53,7 +53,8 @@ def display_config():
 config.command(name="set_model_path")(set_model_path)
 
 
-gprof_ir.command(name="retrieve", help="Run the GPROF IR retrieval.")(retrieval.cli)
+gprof_ir.command(name="retrieve", help="Run the GPROF IR retrieval.")(retrieval.cli_single)
+gprof_ir.command(name="run", help="Run the GPROF IR retrieval.")(retrieval.cli_multi)
 
 
 @gprof_ir.command(name="download_models")

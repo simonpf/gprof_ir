@@ -58,15 +58,18 @@ def load_input_data(path: Path) -> np.ndarray:
 
     lons = np.linspace(-179.98181, 179.98181, 9896)
     lats = np.linspace(-59.981808, 59.981808, 3298)
-    time = np.datetime64(datetime.strptime(path.stem, "merg_%Y%m%d%H_4km-pixel"))
-    times = np.array([time, time + np.timedelta64(30, "m")])
-
-    return xr.Dataset({
-        "time": (("time",), times),
+    data = xr.Dataset({
         "lat": (("lat",), lats),
         "lon": (("lon",), lons),
         "Tb": (("time", "lat", "lon"), tbs.copy()),
     })
+    try:
+        time = np.datetime64(datetime.strptime(path.stem, "merg_%Y%m%d%H_4km-pixel"))
+        times = np.array([time, time + np.timedelta64(30, "m")])
+        data["time"] = (("time",), times)
+    except ValueError:
+        pass
+    return data
 
 
 def download_model(variant: str = "gmi", n_steps: Optional[int] = None) -> Path:
@@ -120,17 +123,30 @@ def get_previous_merged_ir_file(path: Path) -> Path:
     return path.parent / fname
 
 
-def load_ir_tbs_multi_step(path, n_steps: int) -> Path:
+def load_ir_tbs_multi_step(
+        path,
+        n_steps: int,
+        previous_files: Optional[List[Path]] = None
+) -> Path:
     """
     Get path pointing to merged-IR file before the current input file.
     """
-    data = []
-    curr_path = path
-    files = [path]
-    for _ in range((n_steps - 1) // 2):
-        curr_path = get_previous_merged_ir_file(curr_path)
-        files.append(curr_path)
+    if previous_files is None:
+        files = [path]
+        curr_path = path
+        for _ in range((n_steps - 1) // 2):
+            curr_path = get_previous_merged_ir_file(curr_path)
+            files.append(curr_path)
+    else:
+        files = [path] + previous_files
 
+    if len(files) != (n_steps // 2 + 1):
+        raise ValueError(
+            f"Need at least {n_steps // 2} previous files to load the input data "
+            f" for a retrieval with {n_steps} steps."
+        )
+
+    data = []
     for path in files:
         if path.exists():
             data.append(load_input_data(path))
@@ -147,7 +163,7 @@ def load_ir_tbs_multi_step(path, n_steps: int) -> Path:
     return data
 
 
-class InputLoader:
+class MultiInputLoader:
     """
     Input loader for loading merged IR input observations.
     """
@@ -328,7 +344,7 @@ class InputLoader:
         return results, filename
 
 
-def run_retrieval(
+def run_retrieval_multi(
         input_path: Path,
         output_path: Optional[Path] = None,
         device: str = "cpu",
@@ -382,7 +398,7 @@ def run_retrieval(
 
     if output_format.lower() not in ["binary", "netcdf"]:
         raise ValueError(
-            "'outpu_format' should be one of ['binary', 'netcdf']."
+            "'output_format' should be one of ['binary', 'netcdf']."
         )
 
     model = download_model(variant=variant, n_steps=n_steps)
@@ -401,7 +417,7 @@ def run_retrieval(
             input_path
         )
         return 1
-    input_loader = InputLoader(
+    input_loader = MultiInputLoader(
         input_path,
         n_steps=n_steps,
         variant=variant,
@@ -419,7 +435,6 @@ def run_retrieval(
         device=device,
         dtype=dtype,
     )
-
 
 @click.argument("input_path", type=str)
 @click.option(
@@ -494,7 +509,7 @@ def run_retrieval(
     default=8,
     help="The number of threads to use for CPU processing."
 )
-def cli(
+def cli_multi(
         input_path: Path,
         output_path: Optional[Path] = None,
         device: str = "cpu",
@@ -533,7 +548,7 @@ def cli(
             )
             return 1
 
-    res = run_retrieval(
+    res = run_retrieval_multi(
         input_path=input_path,
         output_path=output_path,
         device=device,
@@ -544,6 +559,347 @@ def cli(
         start_time=start_time,
         end_time=end_time,
         n_threads=n_threads
+    )
+    # Return error code.
+    if isinstance(res, int):
+        return res
+
+
+class SingleInputLoader:
+    """
+    Input loader for loading the input for a single retrieval.
+    """
+    def __init__(
+            self,
+            input_file: Path,
+            output_file: Path,
+            variant: str,
+            n_steps: int,
+            previous_files: Optional[List[Path]] = None,
+            input_format: Optional[str] = None,
+            output_format: str = "netcdf",
+            output_path: Optional[Path] = None
+    ):
+        """
+        Args:
+            path: A path object pointing to a directory containing the GPM merged IR files.
+            n_steps: The numebr of input steps to load.
+            variant: The model variant being run.
+            input_format: String specifying the format of the input data.
+        """
+        self.input_file = input_file
+        self.output_file = output_file
+        self.previous_files = previous_files
+        self.variant = variant
+        self.n_steps = n_steps
+        self.output_format = output_format
+        if output_path is None:
+            output_path = Path(".")
+        else:
+            output_path = Path(output_path)
+        self.output_path = output_path
+
+    def __len__(self) -> int:
+        return 1
+
+    def load_input(self) -> Tuple[Dict[str, torch.Tensor], Dict[str, Any], str]:
+        """
+        Loads the retrieval input data from the given input file.
+
+        Args:
+            path: A Path object pointing to the file from which to load the input data.
+
+        Return:
+            A tuple ``(inpt, aux, filename)`` containing the retrieval input as PyTorch tensors in
+            ``inpt``, auxiliary data in ``aux``, and the input filename.
+        """
+        if self.n_steps == 1:
+            input_data = load_input_data(self.input_file)
+            inpt = {
+                "merged_ir": torch.tensor(input_data.Tb.data[:, None])
+            }
+        else:
+            input_data = load_ir_tbs_multi_step(
+                self.input_file,
+                n_steps=self.n_steps,
+                previous_files=self.previous_files
+            )
+            n_times = input_data.time.size
+            inpt = {
+                "merged_ir": torch.stack([
+                    torch.tensor(input_data.Tb.data[n_times - self.n_steps - 1: n_times - 1]),
+                    torch.tensor(input_data.Tb.data[n_times - self.n_steps: n_times])
+                ])
+            }
+            input_data = input_data[{"time": slice(n_times - 2, n_times)}]
+
+        # Calculate invalid input mask
+        valid = np.isfinite(input_data.Tb.data)
+        elem = np.ones((1, 8, 8))
+        valid = binary_closing(valid, elem, border_value=1)
+
+        lats = input_data.lat.data
+        lats = 0.5 * (lats[0::2] + lats[1::2])
+        lons = input_data.lon.data
+        lons = 0.5 * (lons[0::2] + lons[1::2])
+
+        aux = {
+            "latitude": lats,
+            "longitude": lons,
+            "time": input_data.time.data,
+            "valid_input": valid[..., ::2, ::2],
+            "n_steps": self.n_steps,
+            "variant": self.variant
+        }
+        return inpt, aux, self.output_file
+
+    def __iter__(self) -> Tuple[Dict[str, torch.Tensor], Dict[str, Any], str]:
+        """
+        Iterate over retrieval input files.
+        """
+        yield self.load_input()
+
+    def __getitem__(self, ind: int) -> Tuple[Dict[str, torch.Tensor], Dict[str, Any], str]:
+        """
+        Load input data for file with given index.
+        """
+        return self.load_input()
+
+
+    def finalize_results(
+            self,
+            results: Dict[str, torch.Tensor],
+            aux: Dict[str, Any],
+            filename: str,
+            **kwargs
+    ):
+        """
+        Finalizes the retrieval results.
+
+        Args:
+            results: Dictionary containing the retrieval results.
+            aux: Auxiliary data as returned by this input loader.
+            filename: The output filename as returned by the input loader.
+        """
+        surface_precip = results["surface_precip"].data.numpy()[:, 0]
+        quality = np.zeros_like(surface_precip, dtype=np.int8)
+
+        invalid = (surface_precip < -0.01) * (surface_precip > 200)
+        surface_precip[invalid] = np.nan
+        surface_precip = np.maximum(surface_precip, 0.0)
+        quality[invalid] = 2
+
+        valid_input = aux["valid_input"]
+        surface_precip[~valid_input] = np.nan
+        quality[~valid_input] = 1
+
+        if self.output_format != "netcdf":
+            surface_precip = np.roll(np.flip(surface_precip, -2), surface_precip.shape[-1] // 2, -1)
+            output_path = self.output_path / (filename[:-3]  + ".bin")
+            surface_precip.flatten(order='C').tofile(output_path)
+            return None
+
+        results = xr.Dataset({
+            "latitude": (("latitude",), aux["latitude"]),
+            "longitude": (("longitude",), aux["longitude"]),
+            "time": (("time",), aux["time"]),
+            "surface_precip": (("time", "latitude", "longitude"), surface_precip),
+            "quality_flag": (("time", "latitude", "longitude"), quality)
+        })
+
+        results.surface_precip.encoding = {"dtype": "float32", "zlib": True}
+        results.quality_flag.encoding = {"zlib": True}
+        results.quality_flag.attrs["meaning"] = (
+            "0: Good quality, 1: Missing input, 2: Invalid value returned from retrieval"
+        )
+        results.attrs["algorithm"] = f"gprof_ir, version {version('gprof_ir')}"
+        results.attrs["variant"] = self.variant
+        results.attrs["n_steps"] = self.n_steps
+        return results, filename
+
+
+def run_retrieval_single(
+        input_path: Path,
+        output_path: Path,
+        device: str = "cpu",
+        dtype: str = "float32",
+        variant: str = "gmi",
+        output_format: str = "netcdf",
+        n_threads: int = 8,
+        previous_files: Optional[List[Path]] = None
+) -> List[xr.Dataset]:
+    """
+    Run GPROF-IR retrieval on given input data.
+
+    Args:
+        input_path: A path pointing to a single file or a folder containing merged IR input files.
+        output_path: The path to which to write the output.
+        device: The device to run the retrieval on. dtype: The dtype to use for running theretrieval.
+        variant: String identifying the GPROF-IR variant to run.
+        output_format: The format to use to write the output files.
+        n_threads: The number of threads to use for CPU processing.
+        previous_files: The files from which to load the input data for the previous time steps.
+
+    Return:
+        A list of xarray.Datasets containing the results for all input files.
+    """
+    if previous_files is None:
+        n_steps = 1
+    else:
+        n_steps = 1 + 2 * len(previous_files)
+        if 5 < n_steps:
+            raise ValueError(
+                "GPROF-IR only supports using input data from up to two previous files."
+            )
+
+    # Load the model
+    variant = variant.lower()
+    valid = ["gmi", "cmb"]
+    if variant not in valid:
+        raise ValueError(
+            f"'variant' must be one of {valid}."
+        )
+        return 1
+
+    # Ensure that n_steps is not None only for GMI variant and that n_steps is either 3 or 5.
+    if n_steps in [3, 5] and variant == "cmb":
+        raise ValueError(
+            f"Multiple input steps are only available for the 'gmi' variant."
+        )
+        return 1
+    valid = [1, 3, 5]
+    if n_steps not in valid:
+        raise ValueError(
+            f"'n_steps' must be one of {valid}."
+        )
+        return 1
+
+    if output_format.lower() not in ["binary", "netcdf"]:
+        raise ValueError(
+            "'output_format' should be one of ['binary', 'netcdf']."
+        )
+
+    model = download_model(variant=variant, n_steps=n_steps)
+    warnings.filterwarnings("ignore", module="torch")
+    model = load_model(model).eval()
+    n_steps = model.encoder.stages[0].projection.weight.shape[1]
+
+    # Inference config
+    inference_config = load_inference_config(model, device)
+
+    # Input loader
+    input_path = Path(input_path)
+    if not input_path.exists():
+        LOGGER.error(
+            "Input path ('%s') must point to an existing file or directory.",
+            input_path
+        )
+        return 1
+
+    input_loader = SingleInputLoader(
+        input_path,
+        output_path,
+        n_steps=n_steps,
+        variant=variant,
+        output_format=output_format,
+        output_path=output_path,
+        previous_files=previous_files
+    )
+    torch.set_num_threads(n_threads)
+    try:
+        return run_inference(
+            model,
+            input_loader,
+            inference_config,
+            output_path=output_path,
+            device=device,
+            dtype=dtype,
+            progress=False,
+            robust=False
+        )
+    except Exception:
+        LOGGER.exception(
+            "Encountered an error when running the retrieval."
+        )
+        return 1
+
+
+@click.argument("input_files", type=str, nargs=-1)
+@click.argument("output_path", type=str)
+@click.option(
+    "--device",
+    type=str,
+    default="cpu",
+    help=(
+        "The device on which to perform inference."
+    )
+)
+@click.option(
+    "--dtype",
+    type=str,
+    default="float32",
+    help=(
+        "The floating point type to use for inference."
+    )
+)
+@click.option(
+    "--variant",
+    type=str,
+    default="gmi",
+    help=(
+        "The model variant: 'gmi' or 'cmb'."
+    )
+)
+@click.option(
+    "--output_format",
+    type=str,
+    default="netcdf",
+    help=(
+        "The format used to store the retrieval results. Shoule be 'netcdf' for NetCDF4 format"
+        " (default) or 'binary' for GPROF binary format."
+    )
+)
+@click.option(
+    "--n_threads",
+    type=int,
+    default=8,
+    help="The number of threads to use for CPU processing."
+)
+def cli_single(
+        input_files: List[Path],
+        output_path: Path,
+        device: str = "cpu",
+        dtype: str = "float32",
+        variant: str = "gmi",
+        output_format: str = "netcdf",
+        n_threads: int = 8,
+) -> None:
+    """
+    Run GPROF IR retrieval on INPUT_PATH.
+    """
+    if len(input_files) == 0:
+        LOGGER.error(
+            "Need at least one input file.",
+        )
+        return 1
+
+    if 3 < len(input_files):
+        LOGGER.error(
+            "GPROF-IR support three input files at most.",
+        )
+        return 1
+    input_path = input_files[0]
+    previous_files = input_files[1:]
+
+    res = run_retrieval_single(
+        input_path=input_path,
+        output_path=output_path,
+        device=device,
+        dtype=dtype,
+        variant=variant,
+        output_format=output_format,
+        n_threads=n_threads,
+        previous_files=previous_files
     )
     # Return error code.
     if isinstance(res, int):

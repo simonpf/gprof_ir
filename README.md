@@ -16,23 +16,16 @@ The `gprof_ir retrieval` command can be run directly on  **GPM merged IR files**
 
 ### Running on a Single File
 
-To run the retrieval on a single **merged IR file**, use:
+To run the retrieval on a **merged IR file**, use:
 
 ```sh
-gprof_ir retrieve merg_2020010100_4km-pixel.nc4
+gprof_ir retrieve merg_2020010100_4km-pixel.nc4 gprof_ir_2020010100.nc
 ```
 
-This processes the file **`merg_2020010100_4km-pixel.nc4`** and writes the results to the **current working directory**.
+This processes the file **`merg_2020010100_4km-pixel.nc4`** and writes the results in NetCDF4 format to the file to the
+output file gprof_ir_2020010100.nc.
 
-### Running on a Directory
-
-To process all **merged IR files** in a directory (including subdirectories):
-
-```sh
-gprof_ir retrieve /path/to/directory
-```
-
-### Controlling CPU Threads
+#### Controlling CPU Threads
 
 By default, `gprof_ir` may use multiple threads when running on a **CPU**. You can limit the number of threads using:
 
@@ -40,7 +33,27 @@ By default, `gprof_ir` may use multiple threads when running on a **CPU**. You c
 gprof_ir retrieve merg_2020010100_4km-pixel.nc4 --n_threads 1
 ```
 
-### Retrieval Options
+#### Retrieval Options
+
+You can modify the default behavior of `gprof_ir retrieve` using the following options:
+
+| Option | Description |
+|--------|-------------|
+| `--device` | Specifies the device for computation: **`cpu`**, **`cuda:0`**, ..., **`cuda:n`** (for GPU acceleration). |
+| `--dtype` | Specifies the floating point type to use for computation |
+| `--variant` | Specifies the model variant to use for the retrieval: ``cmb`` for the retrieval trained on 2B-CMB precipitation or ``gmi`` for the model trained on GPROF V8 GMI retirevals.|
+| `--output_format` | Specifies the output format to use for the results. ``netcdf`` for NetCDF4 format (the default) or ``binary`` for binary output format.|
+
+## Running on Multiple File
+
+``gprof_ir`` provides the ``gprof_ir run`` command to  process all **merged IR files** in a directory (including subdirectories):
+
+```sh
+gprof_ir run /path/to/input_directory --output_path /path/to/output_directory
+```
+
+
+#### Retrieval Options
 
 You can modify the default behavior of `gprof_ir retrieve` using the following options:
 
