@@ -75,3 +75,11 @@ To change the model directory, run:
 ```sh
 gprof_ir config set_model_path /new/model/path
 ```
+
+### Downloading Models
+
+After setting up the model path, the model files required by ``gprof_ir`` can be downloaded using the following command:
+
+``` shellsession
+gprof_ir download --all
+```

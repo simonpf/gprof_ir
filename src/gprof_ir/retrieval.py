@@ -10,6 +10,7 @@ import gzip
 import logging
 import os
 from pathlib import Path
+import sys
 from typing import Any, Dict, List, Optional, Tuple
 import warnings
 
@@ -381,20 +382,21 @@ def run_retrieval_multi(
         raise ValueError(
             f"'variant' must be one of {valid}."
         )
-        return 1
+        sys.exit(1)
+
 
     # Ensure that n_steps is not None only for GMI variant and that n_steps is either 3 or 5.
     if n_steps in [3, 5] and variant == "cmb":
         raise ValueError(
             f"Multiple input steps are only available for the 'gmi' variant."
         )
-        return 1
+        sys.exit(1)
     valid = [1, 3, 5]
     if n_steps not in valid:
         raise ValueError(
             f"'n_steps' must be one of {valid}."
         )
-        return 1
+        sys.exit(1)
 
     if output_format.lower() not in ["binary", "netcdf"]:
         raise ValueError(
@@ -416,7 +418,7 @@ def run_retrieval_multi(
             "Input path ('%s') must point to an existing file or directory.",
             input_path
         )
-        return 1
+        sys.exit(1)
     input_loader = MultiInputLoader(
         input_path,
         n_steps=n_steps,
@@ -536,7 +538,7 @@ def cli_multi(
                 "Error parsing start time '%s'",
                 start_time
             )
-            return 1
+            sys.exit(1)
 
     if end_time is not None:
         try:
@@ -546,7 +548,7 @@ def cli_multi(
                 "Error parsing end time '%s'",
                 end_time
             )
-            return 1
+            sys.exit(1)
 
     res = run_retrieval_multi(
         input_path=input_path,
@@ -562,7 +564,7 @@ def cli_multi(
     )
     # Return error code.
     if isinstance(res, int):
-        return res
+        sys.exit(res)
 
 
 class SingleInputLoader:
@@ -759,20 +761,20 @@ def run_retrieval_single(
         raise ValueError(
             f"'variant' must be one of {valid}."
         )
-        return 1
+        sys.exit(1)
 
     # Ensure that n_steps is not None only for GMI variant and that n_steps is either 3 or 5.
     if n_steps in [3, 5] and variant == "cmb":
         raise ValueError(
             f"Multiple input steps are only available for the 'gmi' variant."
         )
-        return 1
+        sys.exit(1)
     valid = [1, 3, 5]
     if n_steps not in valid:
         raise ValueError(
             f"'n_steps' must be one of {valid}."
         )
-        return 1
+        sys.exit(1)
 
     if output_format.lower() not in ["binary", "netcdf"]:
         raise ValueError(
@@ -903,4 +905,5 @@ def cli_single(
     )
     # Return error code.
     if isinstance(res, int):
-        return res
+        sys.exit(res)
+    sys.exit()

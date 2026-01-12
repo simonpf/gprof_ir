@@ -118,7 +118,7 @@ def test_retrieve_corrupted_binary(
     args = [
         "gprof_ir",
         "retrieve",
-        str(retrieval_input_data_binary_corrupted / "merg_2018010100_4km-pixel"),
+        str(retrieval_input_data_binary_corrupted / "merg_2018010100_4km-pixel_corr"),
         str(tmp_path / "output.nc4"),
     ]
     proc = subprocess.run(args)
