@@ -51,7 +51,7 @@ def retrieval_input_data_binary_corrupted():
     """
     model_path = Path(CONFIG.get("model_path"))
     input_file = model_path / "test_data/merg_2018010100_4km-pixel"
-    otuput_file = model_path / "test_data/merg_2018010100_4km-pixel_corr"
+    output_file = model_path / "test_data/merg_2018010100_4km-pixel_corr"
     np.memmap(
         input_file, dtype=np.float32, mode="r"
     )[:(os.path.getsize(input_file) // np.dtype(np.float32).itemsize) // 2].tofile(output_file)
