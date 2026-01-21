@@ -28,6 +28,8 @@ def retrieval_input_data():
     )
     other_file = Path(file_path).parent / "merg_2020010101_4km-pixel.nc4"
     shutil.copy(file_path, other_file)
+    dummy_file = Path(file_path).parent / "merg_2020010100_4km-pixel.dummy"
+    shutil.copy(file_path, dummy_file)
     return model_path / "test_data"
 
 
