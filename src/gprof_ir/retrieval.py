@@ -139,7 +139,7 @@ def load_ir_tbs_multi_step(
             curr_path = get_previous_merged_ir_file(curr_path)
             files.append(curr_path)
     else:
-        files = [path] + previous_files
+        files = [path] + list(previous_files)
 
     if len(files) != (n_steps // 2 + 1):
         raise ValueError(
@@ -149,6 +149,7 @@ def load_ir_tbs_multi_step(
 
     data = []
     for path in files:
+        path = Path(path)
         if path.exists():
             data.append(load_input_data(path))
         else:
@@ -322,9 +323,9 @@ class MultiInputLoader:
 
         if self.output_format != "netcdf":
             surface_precip = np.roll(np.flip(surface_precip, -2), surface_precip.shape[-1] // 2, -1)
-            output_path = self.output_path / (filename[:-3]  + ".bin")
+            output_path = self.output_path / (Path(filename).stem + ".bin")
             surface_precip.flatten(order='C').tofile(output_path)
-            return None
+            return output_path
 
         results = xr.Dataset({
             "latitude": (("latitude",), aux["latitude"]),
@@ -697,9 +698,9 @@ class SingleInputLoader:
 
         if self.output_format != "netcdf":
             surface_precip = np.roll(np.flip(surface_precip, -2), surface_precip.shape[-1] // 2, -1)
-            output_path = self.output_path / (filename[:-3]  + ".bin")
+            output_path = self.output_path
             surface_precip.flatten(order='C').tofile(output_path)
-            return None
+            return output_path
 
         results = xr.Dataset({
             "latitude": (("latitude",), aux["latitude"]),

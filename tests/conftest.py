@@ -4,6 +4,7 @@ import pytest
 import requests
 import hashlib
 from pathlib import Path
+import shutil
 
 from huggingface_hub import hf_hub_download
 
@@ -25,6 +26,8 @@ def retrieval_input_data():
         filename="test_data/merg_2020010100_4km-pixel.nc4",
         local_dir=model_path
     )
+    other_file = Path(file_path).parent / "merg_2020010101_4km-pixel.nc4"
+    shutil.copy(file_path, other_file)
     return model_path / "test_data"
 
 
