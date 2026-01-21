@@ -83,6 +83,32 @@ def test_retrieve(
         assert results.attrs["variant"] == variant
         assert results.attrs["n_steps"] == 1
 
+
+@pytest.mark.parametrize("variant", ["gmi"])
+def test_retrieve_dummy_suffix(
+        retrieval_input_data,
+        tmp_path,
+        variant
+):
+    """
+    Test running the GPROF IR retrieval.
+    """
+    args = [
+        "gprof_ir",
+        "retrieve",
+        str(retrieval_input_data / "merg_2020010100_4km-pixel.dummy"),
+        str(tmp_path / "output.nc4"),
+        "--variant",
+        variant
+    ]
+    subprocess.run(args)
+    assert (tmp_path / "output.nc4").exists()
+    with xr.open_dataset(tmp_path / "output.nc4") as results:
+        assert "algorithm" in results.attrs
+        assert results.attrs["variant"] == variant
+        assert results.attrs["n_steps"] == 1
+
+
 @pytest.mark.parametrize("variant", ["gmi"])
 def test_retrieve_binary_output(
         retrieval_input_data,

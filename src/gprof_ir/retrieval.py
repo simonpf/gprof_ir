@@ -31,17 +31,17 @@ from . import config
 LOGGER = logging.getLogger(__name__)
 
 
-def load_input_data(path: Path) -> np.ndarray:
+def load_input_data(path: Path, input_format: Optional[str] = None) -> np.ndarray:
     """
     Load brightness temperatures from NetCDF file.
     """
     path = Path(path)
-    if path.suffix.startswith(".nc"):
+    if path.suffix.startswith(".nc") or input_format == "netcdf":
         return xr.load_dataset(path)
-    elif path.suffix == "":
+    elif path.suffix == "" or input_format == "binary":
         with open(path, "rb") as f:
             buf = f.read()
-    elif path.suffix == "gz":
+    elif path.suffix == "gz" or input_format == "gzip":
         with gzip.open(path, "rb") as f:
             buf = f.read()
     else:
@@ -127,7 +127,8 @@ def get_previous_merged_ir_file(path: Path) -> Path:
 def load_ir_tbs_multi_step(
         path,
         n_steps: int,
-        previous_files: Optional[List[Path]] = None
+        previous_files: Optional[List[Path]] = None,
+        input_format: Optional[str] = None
 ) -> Path:
     """
     Get path pointing to merged-IR file before the current input file.
@@ -151,7 +152,7 @@ def load_ir_tbs_multi_step(
     for path in files:
         path = Path(path)
         if path.exists():
-            data.append(load_input_data(path))
+            data.append(load_input_data(path, input_format=input_format))
         else:
             LOGGER.warning(
                 "Tried loading previous IR data from %s but the file doesn't exist.",
@@ -221,6 +222,10 @@ class MultiInputLoader:
             self.files = [path]
         self.variant = variant
         self.n_steps = n_steps
+        if input_format is not None:
+            self.input_format = input_format.lower()
+        else:
+            self.input_format = input_format
 
         self.output_format = output_format
         if output_path is None:
@@ -244,12 +249,12 @@ class MultiInputLoader:
             ``inpt``, auxiliary data in ``aux``, and the input filename.
         """
         if self.n_steps == 1:
-            input_data = load_input_data(path)
+            input_data = load_input_data(path, input_format=self.input_format)
             inpt = {
                 "merged_ir": torch.tensor(input_data.Tb.data[:, None])
             }
         else:
-            input_data = load_ir_tbs_multi_step(path, n_steps=self.n_steps)
+            input_data = load_ir_tbs_multi_step(path, n_steps=self.n_steps, input_format=self.input_format)
             n_times = input_data.time.size
             inpt = {
                 "merged_ir": torch.stack([
@@ -353,6 +358,7 @@ def run_retrieval_multi(
         dtype: str = "float32",
         variant: str = "gmi",
         n_steps: int = 1,
+        input_format: Optional[str] = None,
         output_format: str = "netcdf",
         start_time: Optional[np.datetime64] = None,
         end_time: Optional[np.datetime64] = None,
@@ -425,6 +431,7 @@ def run_retrieval_multi(
         n_steps=n_steps,
         variant=variant,
         output_format=output_format,
+        input_format=input_format,
         output_path=output_path,
         start_time=start_time,
         end_time=end_time
@@ -595,6 +602,10 @@ class SingleInputLoader:
         self.previous_files = previous_files
         self.variant = variant
         self.n_steps = n_steps
+        if input_format is not None:
+            self.input_format = input_format.lower()
+        else:
+            self.input_format = input_format
         self.output_format = output_format
         if output_path is None:
             output_path = Path(".")
@@ -617,7 +628,7 @@ class SingleInputLoader:
             ``inpt``, auxiliary data in ``aux``, and the input filename.
         """
         if self.n_steps == 1:
-            input_data = load_input_data(self.input_file)
+            input_data = load_input_data(self.input_file, input_format=self.input_format)
             inpt = {
                 "merged_ir": torch.tensor(input_data.Tb.data[:, None])
             }
@@ -727,6 +738,7 @@ def run_retrieval_single(
         device: str = "cpu",
         dtype: str = "float32",
         variant: str = "gmi",
+        input_format: Optional[str] = None,
         output_format: str = "netcdf",
         n_threads: int = 8,
         previous_files: Optional[List[Path]] = None
@@ -804,6 +816,7 @@ def run_retrieval_single(
         output_path,
         n_steps=n_steps,
         variant=variant,
+        input_format=input_format,
         output_format=output_format,
         output_path=output_path,
         previous_files=previous_files
@@ -863,6 +876,14 @@ def run_retrieval_single(
     )
 )
 @click.option(
+    "--input_format",
+    type=str,
+    default=None,
+    help=(
+        "The format of the input data. Should be one of ['netcdf', 'binary', 'gzip']"
+    )
+)
+@click.option(
     "--n_threads",
     type=int,
     default=8,
@@ -875,6 +896,7 @@ def cli_single(
         dtype: str = "float32",
         variant: str = "gmi",
         output_format: str = "netcdf",
+        input_format: str = "netcdf",
         n_threads: int = 8,
 ) -> None:
     """
@@ -900,6 +922,7 @@ def cli_single(
         device=device,
         dtype=dtype,
         variant=variant,
+        input_format=input_format,
         output_format=output_format,
         n_threads=n_threads,
         previous_files=previous_files
