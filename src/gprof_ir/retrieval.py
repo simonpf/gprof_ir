@@ -38,16 +38,17 @@ def load_input_data(path: Path, input_format: Optional[str] = None) -> np.ndarra
     path = Path(path)
     if path.suffix.startswith(".nc") or input_format == "netcdf":
         return xr.load_dataset(path)
-    elif path.suffix == "" or input_format == "binary":
+    elif path.suffix in ["", ".bin"] or input_format == "binary":
         with open(path, "rb") as f:
             buf = f.read()
-    elif path.suffix == "gz" or input_format == "gzip":
+    elif path.suffix in [".gz", ".gzip"] or input_format == "gzip":
         with gzip.open(path, "rb") as f:
             buf = f.read()
     else:
         raise ValueError(
-            "Encoutered input file with unsupported extension '%s'. Expected '.nc4', '.gz', or ''.",
-            path.suffix
+            f"Encoutered input file with unknown extension '{path.suffix}'. Please "
+            " provide the 'input_format' argument if the input file format cannot "
+            "be inferred from its suffix ('.nc', '', '.bin', '.gz', '.gzip')."
         )
 
     raw = np.frombuffer(buf, dtype="u1").reshape(9896, 3298, 2, order='F')
@@ -194,8 +195,14 @@ class MultiInputLoader:
         if path.is_dir():
             if input_format is None:
                 files = sorted(list(path.glob("**/merg_??????????_4km-pixel*")))
+            elif input_format.lower() in ["bin", "binary"]:
+                files = sorted(list(path.glob("**/merg_??????????_4km-pixel")))
+                files += sorted(list(path.glob("**/merg_??????????_4km-pixel.bin")))
             elif input_format.lower() in ["nc", "netcdf"]:
                 files = sorted(list(path.glob("**/merg_??????????_4km-pixel.nc?")))
+            elif input_format.lower() in ["gz", "gzip"]:
+                files = sorted(list(path.glob("**/merg_??????????_4km-pixel.gz")))
+                files += sorted(list(path.glob("**/merg_??????????_4km-pixel.gzip")))
             else:
                 raise ValueError(
                     "Unknown input data format it should either be 'bin' or 'binary' for binary format "
@@ -297,7 +304,6 @@ class MultiInputLoader:
         Load input data for file with given index.
         """
         return self.load_input(self.files[ind])
-
 
     def finalize_results(
             self,
@@ -833,9 +839,11 @@ def run_retrieval_single(
             progress=False,
             robust=False
         )
-    except Exception:
-        LOGGER.exception(
-            "Encountered an error when running the retrieval."
+    except Exception as exc:
+        LOGGER.error(
+            "The following error was encountered while running the retrieval: %s",
+            exc
+
         )
         return 1
 

@@ -1,10 +1,11 @@
-import numpy as np
+import gzip
 import os
-import pytest
-import requests
-import hashlib
 from pathlib import Path
 import shutil
+
+import numpy as np
+import pytest
+import requests
 
 from huggingface_hub import hf_hub_download
 
@@ -28,7 +29,7 @@ def retrieval_input_data():
     )
     other_file = Path(file_path).parent / "merg_2020010101_4km-pixel.nc4"
     shutil.copy(file_path, other_file)
-    dummy_file = Path(file_path).parent / "merg_2020010101_4km-pixel.dummy"
+    dummy_file = Path(file_path).parent / "merg_2020010100_4km-pixel.dummy"
     shutil.copy(file_path, dummy_file)
     return model_path / "test_data"
 
@@ -45,6 +46,12 @@ def retrieval_input_data_binary():
         filename="test_data/merg_2018010100_4km-pixel",
         local_dir=model_path
     )
+    file_path = Path(file_path)
+    gz_file = file_path.with_suffix(".gz")
+    with open(file_path, "rb") as f, gzip.open(gz_file, "wb") as gzfile:
+        shutil.copyfileobj(f, gzfile)
+    gzip_file = gz_file.with_suffix(".gzip")
+    shutil.copy(gz_file, gzip_file)
     return model_path / "test_data"
 
 

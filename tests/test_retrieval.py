@@ -99,7 +99,9 @@ def test_retrieve_dummy_suffix(
         str(retrieval_input_data / "merg_2020010100_4km-pixel.dummy"),
         str(tmp_path / "output.nc4"),
         "--variant",
-        variant
+        variant,
+        "--input_format",
+        "netcdf"
     ]
     subprocess.run(args)
     assert (tmp_path / "output.nc4").exists()
@@ -183,18 +185,38 @@ def test_retrieve_binary(
     """
     Test running the GPROF IR retrieval.
     """
+    for suffix in ["", "gz", "gzip"]:
+        if suffix == "":
+            fname = "merg_2018010100_4km-pixel"
+        else:
+            fname = f"merg_2018010100_4km-pixel.{suffix}"
+        args = [
+            "gprof_ir",
+            "retrieve",
+            str(retrieval_input_data_binary / fname),
+            str(tmp_path / f"output_{suffix}.nc4"),
+            "--device",
+            "cuda"
+        ]
+        subprocess.run(args)
+        assert (tmp_path / f"output_{suffix}.nc4").exists()
+        with xr.open_dataset(tmp_path / f"output_{suffix}.nc4") as results:
+            assert "algorithm" in results.attrs
+            assert results.attrs["variant"] == "gmi"
+            assert results.attrs["n_steps"] == 1
+
     args = [
         "gprof_ir",
         "retrieve",
-        str(retrieval_input_data_binary / "merg_2018010100_4km-pixel"),
+        str(retrieval_input_data_binary / ("merg_2018010100_4km-pixel" + suffix)),
         str(tmp_path / "output.nc4"),
+        "--input_format",
+        "gz",
+        "--device",
+        "cuda"
     ]
     subprocess.run(args)
-    assert (tmp_path / "output.nc4").exists()
-    with xr.open_dataset(tmp_path / "output.nc4") as results:
-        assert "algorithm" in results.attrs
-        assert results.attrs["variant"] == "gmi"
-        assert results.attrs["n_steps"] == 1
+    assert not (tmp_path / "output.nc4").exists()
 
 
 @pytest.mark.skipif(not HAS_CUDA, reason="cuda not available")
