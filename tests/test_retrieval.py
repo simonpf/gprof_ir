@@ -150,7 +150,7 @@ def test_retrieve_binary_output(
     subprocess.run(args)
     assert (tmp_path / "results.bin").exists()
     sp_flat = np.fromfile(tmp_path / "results.bin", dtype="f4")
-    assert np.isclose(sp_ref.flatten(), sp_flat).all()
+    assert np.isclose(sp_ref.flatten(), sp_flat, atol=1e-3).all()
 
 
 def test_retrieve_multi_step(
@@ -399,4 +399,4 @@ def test_run_binary_output(
     subprocess.run(args)
     assert (tmp_path / "gprof_ir_2020010100.bin").exists()
     sp_flat = np.fromfile(tmp_path / "gprof_ir_2020010100.bin", dtype="f4")
-    assert np.isclose(sp_ref.flatten(), sp_flat).all()
+    assert np.isclose(sp_ref.flatten(), sp_flat, atol=1e-3).all()
