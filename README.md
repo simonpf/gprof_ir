@@ -81,5 +81,5 @@ gprof_ir config set_model_path /new/model/path
 After setting up the model path, the model files required by ``gprof_ir`` can be downloaded using the following command:
 
 ``` shellsession
-gprof_ir download --all
+gprof_ir download_models --all
 ```
