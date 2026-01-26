@@ -53,8 +53,8 @@ def display_config():
 config.command(name="set_model_path")(set_model_path)
 
 
-gprof_ir.command(name="retrieve", help="Run the GPROF IR retrieval.")(retrieval.cli_single)
-gprof_ir.command(name="run", help="Run the GPROF IR retrieval.")(retrieval.cli_multi)
+gprof_ir.command(name="retrieve", help="Run the GPROF IR retrieval for a single timestep.")(retrieval.cli_single)
+gprof_ir.command(name="run", help="Run the GPROF IR retrieval for multiple timesteps.")(retrieval.cli_multi)
 
 
 @gprof_ir.command(name="download_models")
@@ -80,6 +80,10 @@ def download_models(all: bool = True):
         download_model("gmi", 3)
         LOGGER.info(
             "Downloaded GMI, 3-timestep model."
+        )
+        download_model("gmi", 5)
+        LOGGER.info(
+            "Downloaded GMI, 5-timestep model."
         )
     else:
         download_model("gmi", 3)
