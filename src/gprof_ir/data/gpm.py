@@ -482,7 +482,7 @@ class GPMGMI(ReferenceDataset):
         bins = [time_bins.astype("datetime64[s]").astype(np.float32), lats_gg[::-1], lons_gg]
         sample = [time.data[valid].astype("datetime64[s]").astype(np.float32), lats[valid], lons[valid]]
         sp_r = binned_statistic_dd(sample, surface_precip[valid], bins=bins)[0]
-        sp_r = np.flip(sp_r, axis=1)
+        #sp_r = np.flip(sp_r, axis=1)
 
         for t_ind in range(time_bins.size - 1):
             time = time_bins[t_ind] + 0.5 * (time_bins[t_ind + 1] - time_bins[t_ind])
