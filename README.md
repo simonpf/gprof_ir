@@ -1,10 +1,10 @@
 # GPROF IR
 
-**GPROF IR** (`gprof_ir`) is a Python package for precipitation retrievals from geostationary **infrared window-channel observations**. It provides background precipitation fields for **merged precipitation products** to complement passive microwave retrievals from the GPROF and GPROF-NN retrievals.
+**GPROF IR** (`gprof_ir`) is a Python package for retrieving precipitation from geostationary **infrared window-channel observations**. It produces background precipitation fields for **merged precipitation products**, complementing passive-microwave retrievals from the GPROF-NN framework.
 
 ## Installation
 
-`gprof_ir` can be installed directly from GitHub using `pip`:
+Install `gprof_ir` directly from GitHub using `pip`:
 
 ```sh
 pip install git+https://github.com/simonpf/gprof_ir
@@ -12,52 +12,74 @@ pip install git+https://github.com/simonpf/gprof_ir
 
 ## Running Retrievals
 
-The `gprof_ir retrieval` command can be run directly on  **GPM merged IR files** ([GPM_MERGIR_1](https://disc.gsfc.nasa.gov/datasets/GPM_MERGIR_1/summary)).
+The `gprof_ir retrieve` command operates on **GPM merged IR files**  
+([GPM_MERGIR_1](https://disc.gsfc.nasa.gov/datasets/GPM_MERGIR_1/summary)).
 
 ### Running on a Single File
 
-To run the retrieval on a single **merged IR file**, use:
+To process a single merged IR file, run:
 
 ```sh
-gprof_ir retrieve merg_2020010100_4km-pixel.nc4
+gprof_ir retrieve merg_2020010100_4km-pixel.nc4 gprof_ir_2020010100.nc
 ```
 
-This processes the file **`merg_2020010100_4km-pixel.nc4`** and writes the results to the **current working directory**.
-
-### Running on a Directory
-
-To process all **merged IR files** in a directory (including subdirectories):
-
-```sh
-gprof_ir retrieve /path/to/directory
-```
+This reads `merg_2020010100_4km-pixel.nc4` and writes the retrieval results to  
+`gprof_ir_2020010100.nc` in NetCDF4 format.
 
 ### Controlling CPU Threads
 
-By default, `gprof_ir` may use multiple threads when running on a **CPU**. You can limit the number of threads using:
+By default, `gprof_ir` may use multiple CPU threads. To restrict the number of threads, use:
 
 ```sh
-OMP_NUM_THREADS=1 gprof_ir retrieve merg_2020010100_4km-pixel.nc4
+gprof_ir retrieve merg_2020010100_4km-pixel.nc4 --n_threads 1
 ```
 
 ### Retrieval Options
 
-You can modify the default behavior of `gprof_ir retrieve` using the following options:
+The behavior of `gprof_ir retrieve` can be customized using the following options:
 
 | Option | Description |
 |--------|-------------|
-| `--output_path path` | Saves retrieval results to **`path`** instead of the current directory. |
-| `--device` | Specifies the device for computation: **`cpu`**, **`cuda:0`**, ..., **`cuda:n`** (for GPU acceleration). |
-| `--start_time YYYY-mm-ddTHH:MM:SS` | Filters files by **start time** (ignores files **before** this timestamp). |
-| `--end_time YYYY-mm-ddTHH:MM:SS` | Filters files by **end time** (ignores files **after** this timestamp). |
+| `--device` | Compute device: `cpu`, `cuda:0`, …, `cuda:n` (for GPU acceleration). |
+| `--dtype` | Floating-point precision used during inference. |
+| `--variant` | Retrieval model variant: `cmb` (trained on GPM 2B-CMB) or `gmi` (trained on GPROF-V8 GMI retrievals). |
+| `--output_format` | Output format: `netcdf` (default) or `binary`. |
 
+## Running on Multiple Files
 
-## Configuring the model path
+To process all merged IR files in a directory (including subdirectories), use:
 
-GPROF IR downloads the retrieval model from Hugging Face and stores it locally. By default, the model is saved in the appropriate user data directory (``~/.share/gprof_ir`` on linux).
+```sh
+gprof_ir run /path/to/input_directory --output_path /path/to/output_directory
+```
 
-To change the directory where ``gprof_ir`` stores and loads models, use the following command:
+### Batch Retrieval Options
+
+The following options are available for `gprof_ir run`:
+
+| Option | Description |
+|--------|-------------|
+| `--output_path` | Directory in which retrieval results are written. |
+| `--device` | Compute device: `cpu`, `cuda:0`, …, `cuda:n`. |
+| `--dtype` | Floating-point precision used during inference. |
+| `--variant` | Retrieval model variant: `cmb` or `gmi`. |
+| `--n_steps` | Number of input timesteps for the `gmi` variant (`1`, `3`, or `5`). |
+| `--output_format` | Output format: `netcdf` (default) or `binary`. |
+
+## Configuring the Model Path
+
+GPROF IR automatically downloads its trained retrieval models from Hugging Face and caches them locally. By default, models are stored in the platform-specific user data directory (e.g., `~/.share/gprof_ir` on Linux).
+
+To change the model directory, run:
+
+```sh
+gprof_ir config set_model_path /new/model/path
+```
+
+### Downloading Models
+
+After setting up the model path, the model files required by ``gprof_ir`` can be downloaded using the following command:
 
 ``` shellsession
-gprof_ir config set_model_path /new/model/path
+gprof_ir download_models --all
 ```
