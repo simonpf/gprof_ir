@@ -12,6 +12,7 @@ from rich.logging import RichHandler
 
 from . import retrieval
 from .config import CONFIG, set_model_path
+from . import testing
 
 
 FORMAT = "%(message)s"
@@ -55,6 +56,7 @@ config.command(name="set_model_path")(set_model_path)
 
 gprof_ir.command(name="retrieve", help="Run the GPROF IR retrieval for a single timestep.")(retrieval.cli_single)
 gprof_ir.command(name="run", help="Run the GPROF IR retrieval for multiple timesteps.")(retrieval.cli_multi)
+gprof_ir.command(name="test", help="Test GPROF IR retrieval on independent test data.")(testing.cli)
 
 
 @gprof_ir.command(name="download_models")
