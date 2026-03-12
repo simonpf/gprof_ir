@@ -41,7 +41,6 @@ class GPROFIRRetrieval:
         model = download_model(variant=variant, n_steps=n_steps)
         warnings.filterwarnings("ignore", module="torch")
         model = load_model(model).eval()
-        model = load_model(model)
         device = torch.device(device)
         use_autocast = dtype in (torch.bfloat16, torch.float16)
         self.dtype = torch.float32 if use_autocast else dtype
@@ -125,6 +124,7 @@ def load_imerg_precip(path: Path, bounds: Tuple[float, float, float, float]) -> 
         "time": time.astype("datetime64[ns]")
     })
 
+
 def load_imerg_precip_mw(path: Path, bounds: Tuple[float, float, float, float]) -> xr.Dataset:
     """
     Load IMERG precipitation.
@@ -163,6 +163,7 @@ def load_imerg_precip_mw(path: Path, bounds: Tuple[float, float, float, float]) 
         "heavy_precip_flag": (("longitude", "latitude"), precip_flag.astype(np.int8)),
         "time": time.astype("datetime64[ns]")
     })
+
 
 def load_imerg_precip_ir(path: Path, bounds: Tuple[float, float, float, float]) -> xr.Dataset:
     """
