@@ -223,6 +223,7 @@ data and examines the consistency of the resulting precipitation estimates.
 Section 4 discusses the implications for the development of next-generation
 merged precipitation products.
 
+
 \section{Methods and Data}
 \label{sec:methods}
 
@@ -238,16 +239,18 @@ architecture of the GPROF V08 models, both width and depth of the model were
 reduced in order to accommodate operational requirements on processing time.
 Note that “model” is used in this paper to denote a neural network model, not to
 be confused with a numerical model of precipitation, weather, or climate
-processes. The retrieval input consists of single-channel infrared observations
+processes.
+
+The retrieval input consists of single-channel infrared observations
 from up to five consecutive timesteps leading up to the nominal time. To
 leverage the comparably high resolution of the IR input observations, the model
-ingests the gridded IR observations at their native 0.036 degree and 30 min
+ingests the gridded IR observations at their native 0.036$^\circ$ and 30 min
 resolution. Since the effective spatial resolution of the retrieved
-precipitation can be expected to be much lower than the 0.036 degree of the
+precipitation can be expected to be much lower than the 0.036$^\circ$ of the
 input observations, the model output is produced at half of the input spatial
-resolution to reduce inference complexity as well as storage requirement. The
-input consists of image patches of size 512 px x 512 px at 0.036 degree that are
-mapped to precipitation estimates of size 256 px x 256 px with a resolution of
+resolution to reduce inference complexity as well as storage requirements. The
+input consists of image patches of size 512 px x 512 px at 0.036$^\circ$ that are
+mapped to precipitation estimates of size 256 px $\times$ 256 px with a resolution of
 0.072$^\circ$. The model outputs are therefore at a spatial resolution of
 0.072$^\circ$ and a temporal resolution of 30 minutes. The training dataset
 comprises IR observations paired with corresponding reference precipitation
@@ -262,14 +265,92 @@ The neural network architecture used to implement the GPROF-IR retrieval.
  }\label{fig:achictecture}
 \end{figure}
 
+\subsection{Design Experiments}
 
-The GPROF-NN XPR retrieval algorithm is a machine-learning based precipitation
-retrieval that is trained to simultaneously provide estimates of CPR-based and
-DPR-based precipitation rates. The two estimates are subsequently fused to
-provide a general precipitation estimate that better represents precipitation
-across the full spectrum of intensities. Below we describe the retrieval
-implementation together with the data sources used to validate the retrieval
-itself as well as the two radar-based reference datasets.
+Gridded geostationary IR observations provide only indirect information on
+surface precipitation, as they are primarily sensitive to cloud-top properties.
+However, their high temporal resolution captures the evolution of cloud systems,
+which can help constrain precipitation at the surface. To exploit this temporal
+information, we evaluate retrieval configurations that incorporate multiple
+preceding IR timesteps. Preceding timesteps were used instead of centered
+timesteps to avoid impacting the latency of near-real-time retrievals.
+Specifically, we consider models that include two and four additional prior
+observations (for a total of three and five timesteps, respectively). These
+multi-timestep models are trained sequentially: the single-timestep model is
+trained first, its weights are used to initialize the three-timestep model, and
+the latter is subsequently used to initialize the five-timestep model.
+
+Overall, we test the following retrieval configurations:
+
+\begin{enumerate}
+    \item[GPROF-IR (CMB, 1)] uses input observations from a single time step and
+      is trained using the 2BCMB dataset as reference data.
+    \item[GPROF-IR (GMI, 1)] uses input observations from a single time step and
+      trained using GPROF V08 GMI retrieval results as reference data.
+    \item[GPROF-IR (GMI, 3)] uses input observations from three time steps and
+      trained using GPROF V08 GMI retrieval results as reference data.
+    \item[GPROF-IR (GMI, 5):] uses input observations from five time steps and
+      trained using GPROF V08 GMI retrieval results as reference data.
+\end{enumerate}
+
+
+\subsection{Input Data}
+
+\subsubsection{CPC 4-km Gridded IR}
+
+
+\subsubsection{GPM L2BCMB}
+
+\subsubsection{GPROF V08 GMI}
+
+\subsection{Baseline Precipitation Estimates}
+
+\subsubsection{IMERG V07}
+
+\subsubsection{ERA5}
+
+\subsection{Validation Data}
+
+To demonstrate the improved skill of the GPROF-IR retrieval compared to IMERG
+V07 and ERA5 baselines, we evaluate the retrievals using multiple sources of
+independent validation data.
+
+\subsubsection{The SatRain Benchmark Dataset}
+
+The SatRain benchmark provides a machine-learning-ready training and evaluation
+dataset for machine-learning precipitation retrievals. It integrates
+high-quality reference data from gauge-corrected ground radars and the
+WegenerNet high-density gauge network. The testing split of the benchmakr
+provides an easily accessible and comprehensive validation resource to assess
+satellite precipitation retrievals against. By using the publicly available
+SatRain data and following its standardized evaluation protocol, we ensure that
+the validation results of the GPROF-IR retrievals are reproducible and directly
+comparable with other algorithms.
+
+The testing split of the dataset comprises one year of GMI overpasses over the
+CONUS and Korea as well as two years of overpasses over the Wegener gauge
+network in Austria. The CONUS testing data is derived from gauge-corrected
+precipitation estimates from the NOAA Multi-Radar Multi-Sensor (MRMS) dataset;
+the Korea data is derived from gauge-corrected precipitation estimates provided
+by the Korean Meteorological Agency. To accommodate for the testing resolution
+of 0.036 degree used by the SatRain dataset, all GPROF-IR results are
+interpolated to the SatRain grid using bi-linear interpolation.
+
+\subsubsection{OceanRAIN Shipborne Distrometer Measurements}
+
+Since the SatRain benchmark dataset relies on measurements from gauges and
+gauge-corrected ground-based radars, it is limited to land surfaces. To also
+validate the retrievals over ocean, we use shipborne distrometer measurements
+from the OceanRAIN dataset (Figure 4). These measurements are effectively point
+sources over 30-minute windows, which we match to the closest IR retrievals.
+Since OceanRAIN data is currently available only up until December 2018, we use
+all available data from 2017 to 2018. Since this period overlaps with the
+training data, we exclude all measurements that coincide with GMI overpasses.
+This excludes any observations that the retrieval may have encountered during
+training and should therefore reduce potential positive biases in the
+validation.
+
+
 
 
 \subsection{The GPROF-NN XPR Retrieval}
@@ -289,7 +370,7 @@ composed of EfficientNet-V2–style inverted bottleneck convolutional blocks
 adopted in ConvNeXt \citep{liu2022convnet}, each convolutional block uses Layer
 Normalization \citep{ba2016layer} and GELU activation functions
 \citep{hendrycks2016gaussian}. The network input consists of GMI brightness
-temperatures together with the corresponding earth-incidence angles (EIA) for
+temperatures together with the corresponding earth-incidence angles () for
 all channels and a set of ancillary variables. These ancillary data describe
 both surface conditions (land fraction, elevation, mountain classification,
 leaf-area index, ice fraction, and snow depth) and the meteorological
