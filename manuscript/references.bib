@@ -72,11 +72,12 @@ Section: Journal of Applied Meteorology and Climatology},
 	pages = {3--21},
 }
 
-@article{liu_convnet_nodate,
+@article{liu_convnet_2022,
 	title = {A {ConvNet} for the 2020s},
 	abstract = {The “Roaring 20s” of visual recognition began with the introduction of Vision Transformers (ViTs), which quickly superseded ConvNets as the state-of-the-art image classiﬁcation model. A vanilla ViT, on the other hand, faces difﬁculties when applied to general computer vision tasks such as object detection and semantic segmentation. It is the hierarchical Transformers (e.g., Swin Transformers) that reintroduced several ConvNet priors, making Transformers practically viable as a generic vision backbone and demonstrating remarkable performance on a wide variety of vision tasks. However, the effectiveness of such hybrid approaches is still largely credited to the intrinsic superiority of Transformers, rather than the inherent inductive biases of convolutions. In this work, we reexamine the design spaces and test the limits of what a pure ConvNet can achieve. We gradually “modernize” a standard ResNet toward the design of a vision Transformer, and discover several key components that contribute to the performance difference along the way. The outcome of this exploration is a family of pure ConvNet models dubbed ConvNeXt. Constructed entirely from standard ConvNet modules, ConvNeXts compete favorably with Transformers in terms of accuracy and scalability, achieving 87.8\% ImageNet top-1 accuracy and outperforming Swin Transformers on COCO detection and ADE20K segmentation, while maintaining the simplicity and efﬁciency of standard ConvNets.},
 	language = {en},
 	author = {Liu, Zhuang and Mao, Hanzi and Wu, Chao-Yuan and Feichtenhofer, Christoph and Darrell, Trevor and Xie, Saining},
+    year = {2022}
 }
 
 @inproceedings{smith_cyclical_2017,
@@ -189,11 +190,12 @@ Section: Journal of Applied Meteorology and Climatology},
 	author = {Woo, Sanghyun and Debnath, Shoubhik and Hu, Ronghang and Chen, Xinlei and Liu, Zhuang and Kweon, In So and Xie, Saining},
 }
 
-@article{tan_efficientnetv2_nodate,
+@article{tan_efficientnetv2_2021,
 	title = {{EfficientNetV2}: {Smaller} {Models} and {Faster} {Training}},
 	abstract = {This paper introduces EfﬁcientNetV2, a new family of convolutional networks that have faster training speed and better parameter efﬁciency than previous models. To develop these models, we use a combination of training-aware neural architecture search and scaling, to jointly optimize training speed and parameter efﬁciency. The models were searched from the search space enriched with new ops such as Fused-MBConv. Our experiments show that EfﬁcientNetV2 models train much faster than state-of-the-art models while being up to 6.8x smaller.},
 	language = {en},
 	author = {Tan, Mingxing and Le, Quoc V},
+	year = {2021},
 }
 
 @article{wang_deep_2018,
@@ -1922,7 +1924,7 @@ Section: Bulletin of the American Meteorological Society},
 	number = {17},
 	urldate = {2025-11-25},
 	journal = {Atmospheric Measurement Techniques},
-	author = {Pfreundschuh, Simon and Brown, Paula J. and Kummerow, Christian D. and Eriksson, Patrick and Norrestad​​​​​​​, Teodor},
+	author = {Pfreundschuh, Simon and Brown, Paula J. and Kummerow, Christian D. and Eriksson, Patrick and Norrestad, Teodor},
 	month = sep,
 	year = {2022},
 	note = {Publisher: Copernicus GmbH},
@@ -2135,7 +2137,6 @@ Section: Journal of Atmospheric and Oceanic Technology},
 	issn = {2169-8996},
 	url = {https://onlinelibrary.wiley.com/doi/abs/10.1029/2025JD044595},
 	doi = {10.1029/2025JD044595},
-	abstract = {We introduce Rain over Africa (RoA), a public retrieval algorithm providing near-real-time precipitation estimates over the African continent. The retrievals are based on Meteosat thermal infrared observations. Therefore, rain can be monitored constantly, minutes after input data dissemination. Despite this low latency, RoA accuracy is comparable to estimates requiring hours or more to obtain. Consequently, RoA is of particular interest where a rapid response is critical, such as for disaster preparedness. RoA retrievals employ a convolutional and quantile regression neural network: the latter enables detailed case-specific descriptions of the retrieval uncertainty. Four years of data from the calibration satellite in the GPM mission were used as training and evaluation labels. With this setup, limitations in earlier near-real-time retrievals for Africa were overcome. Moreover, the RoA network runs on regular workstations. With a 30-km effective resolution, RoA retrievals over land are more timely and detailed than the established IMERG precipitation estimates. RoA is also applicable over the surrounding ocean regions, maintaining a similar performance. However, there IMERG exhibits a better effective resolution, at least for its more favorable conditions. Additionally, RoA's probabilistic nature enables addressing the inherent uncertainties of satellite precipitation retrievals by using probabilities of exceeding precipitation thresholds. Further assessment reveals similar diurnal cycles between RoA and IMERG, although IMERG shows some instability. Visual inspection of rain evolution patterns also indicates that RoA is more consistent. Finally, an annual mean analysis including CHIRPS estimates shows regional differences among the three, with no clear outlier behavior for RoA.},
 	language = {en},
 	number = {20},
 	urldate = {2026-01-09},
@@ -2763,7 +2764,21 @@ url="https://doi.org/10.1007/978-3-030-24568-9_20"
 }
 
 @techreport{huffman2019imerg_v07_atbd,
-  author       = {Huffman, George J. and Bolvin, David T. and Nelkin, Eric J. and Tan, Jianxin},
+  author       = {
+  Huffman, George J. and
+  Bolvin, David T. Bolvin and
+  Joyce, Robert and
+  Nelkin, Eric J. and
+  Tan, Jackson and
+  Braithwaite, Dan and
+  Hsu, Kuolin and
+  Kelley, Owen A. and
+  Nguyen, Phu and
+  Sorooshian Soroosh and
+  Watters, Daniel C. and
+  West, B. Jason, and
+  Xie, Pingping
+  },
   title        = {{Algorithm Theoretical Basis Document (ATBD): NASA Global Precipitation Measurement (GPM) Integrated Multi-satellitE Retrievals for GPM (IMERG), Version 07}},
   institution  = {NASA Goddard Space Flight Center},
   year         = {2019},
@@ -2771,4 +2786,182 @@ url="https://doi.org/10.1007/978-3-030-24568-9_20"
   number       = {IMERG V07},
   address      = {Greenbelt, MD, USA},
   url          = {https://gpm.nasa.gov/resources/documents/imerg-v07-atbd}
+}
+
+@misc{ncep_cpc_gpm_mergir_v1,
+  author       = {{NOAA National Centers for Environmental Prediction (NCEP)} and {Climate Prediction Center (CPC)}},
+  title        = {{NCEP/CPC L3 Half Hourly 4km Global (60S--60N) Merged IR V1 (GPM\_MERGIR)}},
+  year         = {2017},
+  howpublished = {\url{https://disc.gsfc.nasa.gov/datasets/GPM_MERGIR_1/summary}},
+  note         = {Accessed: 2026-04-21},
+  institution  = {NASA Goddard Earth Sciences Data and Information Services Center (GES DISC)},
+  doi          = {10.5067/GPM/MERGIR.1}
+}
+
+@article{janowiak2001real,
+  title={A real-time global half-hourly pixel-resolution infrared dataset and its applications},
+  author={Janowiak, John E and Joyce, Robert J and Yarosh, Yelena},
+  journal={Bulletin of the American Meteorological Society},
+  volume={82},
+  number={2},
+  pages={205--218},
+  year={2001},
+  publisher={American Meteorological Society}
+}
+
+@article{kummerow2015evolution,
+  title={The evolution of the Goddard profiling algorithm to a fully parametric scheme},
+  author={Kummerow, Christian D and Randel, David L and Kulie, Mark and Wang, Nai-Yu and Ferraro, Ralph and Joseph Munchak, S and Petkovic, Veljko},
+  journal={Journal of atmospheric and oceanic technology},
+  volume={32},
+  number={12},
+  pages={2265--2280},
+  year={2015}
+}
+
+@misc{gpm_imerg_final_v07,
+  author       = {{Huffman, G. J.} and {Bolvin, D. T.} and {Braun, S. A.} and {Hsu, K.-L.} and {Joyce, R. J.} and {Xie, P.}},
+  title        = {{GPM IMERG Final Precipitation L3 Half Hourly 0.1 Degree $\times$ 0.1 Degree V07 (GPM\_3IMERGHH)}},
+  year         = {2023},
+  howpublished = {\url{https://disc.gsfc.nasa.gov/datasets/GPM_3IMERGHH_07/summary}},
+  note         = {Accessed: 2026-04-21},
+  institution  = {NASA Goddard Earth Sciences Data and Information Services Center (GES DISC)},
+  doi          = {10.5067/GPM/IMERG/3B-HH/07}
+}
+
+@article{nguyen2020persiann,
+  title={Persiann dynamic infrared--rain rate (PDIR-now): A near-real-time, quasi-global satellite precipitation dataset},
+  author={Nguyen, Phu and Ombadi, Mohammed and Gorooh, Vesta Afzali and Shearer, Eric J and Sadeghi, Mojtaba and Sorooshian, Soroosh and Hsu, Kuolin and Bolvin, David and Ralph, Martin F},
+  journal={Journal of hydrometeorology},
+  volume={21},
+  number={12},
+  pages={2893--2906},
+  year={2020}
+}
+
+@misc{c3s_era5_single_levels,
+  author       = {{Copernicus Climate Change Service (C3S)}},
+  title        = {{ERA5 hourly data on single levels from 1940 to present}},
+  year         = {2023},
+  howpublished = {{Copernicus Climate Change Service Climate Data Store (CDS)}},
+  doi          = {10.24381/cds.adbb2d47},
+  note         = {Accessed: 22-Apr-2026}
+}
+
+@misc{ncep_cpc_mergir_v1,
+  author       = {{NOAA National Centers for Environmental Prediction (NCEP)} and {Climate Prediction Center (CPC)}},
+  title        = {{NCEP/CPC L3 Half Hourly 4km Global (60S--60N) Merged IR V1 (GPM\_MERGIR)}},
+  year         = {2017},
+  howpublished = {\url{https://disc.gsfc.nasa.gov/datasets/GPM_MERGIR_1/summary}},
+  note         = {Accessed: 2026-04-22},
+  institution  = {NASA Goddard Earth Sciences Data and Information Services Center (GES DISC)},
+  doi          = {10.5067/GPM/MERGIR.1}
+}
+
+@misc{gpcp_v33_precip,
+  author       = {{Adler, R. F.} and {Huffman, G. J.} and {Bolvin, D. T.} and {Curtis, S.} and {Ferraro, R.} and {Janowiak, J.} and {Joyce, R.} and {Gruber, A.} and {Xie, P.} and {Arkin, P.} and {Nelkin, E.}},
+  title        = {{Global Precipitation Climatology Project (GPCP) Version 3.3 Monthly Precipitation Data Set}},
+  year         = {2023},
+  howpublished = {\url{https://disc.gsfc.nasa.gov/datasets/GPCPMON_3.3/summary}},
+  note         = {Accessed: 2026-04-22},
+  institution  = {NASA Goddard Earth Sciences Data and Information Services Center (GES DISC)},
+  doi          = {10.5067/MEASURES/GPCP/DATA301}
+}
+
+@misc{satrain_dataset,
+  author       = {{Pfreundschuh, S.} and {International Precipitation Working Group (IPWG)}},
+  title        = {{SatRain: A Benchmark Dataset for Satellite-Based Precipitation Retrieval}},
+  year         = {2026},
+  howpublished = {\url{satrain.readthedocs.io}},
+  note         = {Version 1.0, Accessed: 2026-04-22},
+  institution  = {International Precipitation Working Group (IPWG)}
+}
+
+@software{pfreundschuh_gprofir_2026,
+  author       = {Pfreundschuh, Simon},
+  title        = {GPROF-IR: Implementation of the GPROF-IR Precipitation Retrieval},
+  year         = {2026},
+  url          = {https://github.com/simonpf/gprof_ir},
+  version      = {v1.0},
+  note         = {GitHub repository},
+}
+
+@misc{pfreundschuh_xpr_2026,
+      title={Bridging the Sensitivity Gap in Precipitation Estimates from Spaceborne Radars using Passive Microwave Observations},
+      author={Simon Pfreundschuh and Christian D. Kummerow},
+      year={2026},
+      eprint={2604.23745},
+      archivePrefix={arXiv},
+      primaryClass={physics.ao-ph},
+      url={https://arxiv.org/abs/2604.23745},
+}
+
+@article{tapiador_gpm_2011,
+title = {Global precipitation measurement: Methods, datasets and applications},
+journal = {Atmospheric Research},
+volume = {104-105},
+pages = {70-97},
+year = {2012},
+issn = {0169-8095},
+doi = {https://doi.org/10.1016/j.atmosres.2011.10.021},
+url = {https://www.sciencedirect.com/science/article/pii/S0169809511003607},
+author = {Francisco J. Tapiador and F.J. Turk and Walt Petersen and Arthur Y. Hou and Eduardo García-Ortega and Luiz A.T. Machado and Carlos F. Angelis and Paola Salio and Chris Kidd and George J. Huffman and Manuel {de Castro}},
+keywords = {Precipitation Regional Climate Models (RCM), Global Climate Models (GCM), Quantitative Precipitation Estimation (QPE), Global Precipitation Measurement (GPM) mission},
+abstract = {This paper explores the many aspects of precipitation measurement that are relevant to providing an accurate global assessment of this important environmental parameter. Methods discussed include ground data, satellite estimates and numerical models. First, the methods for measuring, estimating, and modeling precipitation are discussed. Then, the most relevant datasets gathering precipitation information from those three sources are presented. The third part of the paper illustrates a number of the many applications of those measurements and databases, namely hydropower, data assimilation and validation of Regional Climate Models (RCM). The aim of the paper is to organize the many links and feedbacks between precipitation measurement, estimation and modeling, indicating the uncertainties and limitations of each technique in order to identify areas requiring further attention, and to show the limits within which datasets can be used. Special emphasis is put on the central role of the upcoming Global Precipitation Measurement (GPM) mission in precipitation science.}
+}
+
+@Article{kidd_status_2011,
+AUTHOR = {Kidd, C. and Levizzani, V.},
+TITLE = {Status of satellite precipitation retrievals},
+JOURNAL = {Hydrology and Earth System Sciences},
+VOLUME = {15},
+YEAR = {2011},
+NUMBER = {4},
+PAGES = {1109--1116},
+URL = {https://hess.copernicus.org/articles/15/1109/2011/},
+DOI = {10.5194/hess-15-1109-2011}
+}
+
+@article{kidd_global_2011,
+author = {Kidd, Chris and Huffman, George},
+title = {Global precipitation measurement},
+journal = {Meteorological Applications},
+volume = {18},
+number = {3},
+pages = {334-353},
+keywords = {precipitation, satellite observations, infrared, microwave},
+doi = {https://doi.org/10.1002/met.284},
+url = {https://rmets.onlinelibrary.wiley.com/doi/abs/10.1002/met.284},
+eprint = {https://rmets.onlinelibrary.wiley.com/doi/pdf/10.1002/met.284},
+abstract = {Abstract The quantification of precipitation on a global scale is critical for applications ranging from climate monitoring to water resource management. Conventional observations through surface gauge networks provide the most direct measure of precipitation, although these are very much limited to land areas, with very few in situ measurements over the oceans. Weather radars, although providing a spatial measure of precipitation, are limited in extent and number. Satellite observations offer an unrivalled vantage point to observe precipitation on a global basis. Since precipitation is spatially and temporally highly variable, satellites are able to provide temporal and spatial samples commensurate with many precipitation characteristics. This paper provides an overall review of global precipitation estimation, providing an outline of conventional measurements, the basis of the satellite systems used in the observation of precipitation, and the generation, availability and validation of the derived precipitation products. Finally, future satellite precipitation missions are presented. Copyright © 2011 Royal Meteorological Society},
+year = {2011}
+}
+
+@Article{ryu_radar_2025,
+AUTHOR = {Ryu, Soorok and Song, Joon Jin and Lee, GyuWon},
+TITLE = {Radar–Rain Gauge Merging for High-Spatiotemporal-Resolution Rainfall Estimation Using Radial Basis Function Interpolation},
+JOURNAL = {Remote Sensing},
+VOLUME = {17},
+YEAR = {2025},
+NUMBER = {3},
+ARTICLE-NUMBER = {530},
+URL = {https://www.mdpi.com/2072-4292/17/3/530},
+ISSN = {2072-4292},
+ABSTRACT = {This study introduces methods for generating fused precipitation data by applying radial basis function (RBF) interpolation, which integrates radar reflectivity-based data with ground-based precipitation gauge measurements. Rain gauges provide direct point rainfall measurements near the ground, while radars capture the spatial variability of precipitation. However, radar-based estimates, particularly for extreme rainfall events, often lack accuracy due to their indirect derivation from radar reflectivity. The study aims to produce high-resolution gridded ground precipitation data by merging radar rainfall estimates with the precise rain gauge measurements. Rain gauge data were sourced from automated synoptic observing systems (ASOSs) and automatic weather systems (AWSs), while radar data, based on hybrid surface rainfall (HSR) composites, were all provided by the Korea Meteorological Administration (KMA). Although RBF interpolation is a well-established technique, its application to the merging of radar and rain gauge data is unprecedented. To validate the accuracy of the proposed method, it was compared with traditional approaches, including the mean field bias (MFB) adjustment method, and kriging-based methods such as regression kriging (RK) and kriging with external drift (KED). Leave-one-out cross-validation (LOOCV) was performed to assess errors by analyzing overall error statistics, spatial errors, and errors in rainfall intensity data. The results showed that the RBF-based method outperformed the others in terms of accuracy.},
+DOI = {10.3390/rs17030530}
+}
+
+@article{bi_khanun_2025,
+author = {Bi, Mingming and Zou, Xiaolei},
+title = {Intensity and Structural Changes During the Eyewall Replacement Cycle of Typhoon Khanun (2023) Observed by Five POES Microwave Imagers},
+journal = {Journal of Geophysical Research: Atmospheres},
+volume = {130},
+number = {17},
+pages = {e2025JD043523},
+doi = {https://doi.org/10.1029/2025JD043523},
+url = {https://agupubs.onlinelibrary.wiley.com/doi/abs/10.1029/2025JD043523},
+eprint = {https://agupubs.onlinelibrary.wiley.com/doi/pdf/10.1029/2025JD043523},
+note = {e2025JD043523 2025JD043523},
+abstract = {Abstract This study investigates characteristic variations of the eye, eyewall, and moat structures during the eyewall replacement cycle (ERC) of Typhoon Khanun in 2023 based on brightness temperature observations from microwave imagers onboard five sun-synchronous meteorological satellites. Khanun was initially positioned south of the subtropical high and moved northwestward. Two distinctive aspects of Typhoon Khanun's ERC are (a) its ERC occurred during a 2-day period (∼0600 UTC 1 to ∼0600 UTC 3 August) when its motion slowed down being sandwiched between the midlatitude and low-latitude subtropical highs and (b) after replacing the inner eyewall, the radius of the outer eyewall expands instead of shrinking and the typhoon's intensity quickly decreased. As revealed in microwave imager brightness temperature observations, the phases of wavenumber-2 disturbances on the outer side of the inner eyewall and the inner side of the outer eyewall during the ERC had opposite signs. After the ERC was completed, the absolute angular momentum decreased at the outer eyewall, causing expansion of the outer eyewall and a decrease in typhoon intensity. There were also wavenumber-1 perturbations near both the primary and secondary eyewalls, with the negative phase being located on the left side of the vertical wind shear during most of the ERC period.},
+year = {2025}
 }

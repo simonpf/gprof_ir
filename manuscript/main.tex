@@ -21,7 +21,7 @@
 
 %% May use \\ to break lines in title:
 
-\title{GPROF-IR: An Improved Infrared Precipitation Precipitation Algorithm for Merged Satellite Precipitation Products}
+\title{GPROF-IR: An Improved Single-Channel Infrared Precipitation Retrieval for Merged Satellite Precipitation Products}
 
 \usepackage{booktabs}
 
@@ -38,11 +38,17 @@
 %% affiliation and at each author's name. Use \\ to insert line breaks to place each affiliation on its own line.
 
 \authors{
-  Simon Pfreundschuh,\aff{a}\correspondingauthor{Simon Pfreundschuh, simon.pfreundschuh@colostate.edu}
-Christian D. Kummerow,\aff{a}
+  Simon Pfreundschuh\aff{a}\correspondingauthor{Simon Pfreundschuh, simon.pfreundschuh@colostate.edu},
+  Christian D. Kummerow\aff{a},
+  Jackson Tan\aff{b, c},
+  George J. Huffman\aff{c}
 }
 
-\affiliation{\aff{a}{Department of Atmospheric Science, Colorado State University, Fort Collins, USA}}
+\affiliation{
+  \aff{a}{Colorado State University, Fort Collins, USA}\\
+  \aff{b}{University of Maryland, Baltimore County, Baltimore, Maryland, USA} \\
+  \aff{c}{NASA Goddard Space Flight Center, Greenbelt, Maryland}
+}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % ABSTRACT
@@ -56,28 +62,34 @@ Current merged precipitation products such as IMERG, GSMAP, and CMORPH combine
 satellite-based estimates from passive microwave (PMW) and infrared (IR)
 observations. However, the fundamentally different information content of these
 sensors makes it challenging to produce consistent precipitation estimates, even
-for coincident observations. As a result, inconsistencies between PMW and IR
+for coincident observations. The resulting inconsistencies between PMW and IR
 retrievals can introduce artifacts in the temporal evolution of merged
-precipitation fields and lead to an overreliance on time-propagated PMW estimates. \\
+precipitation fields and lead to an overreliance on time-propagated PMW
+estimates. \\
 %
-Here, we introduce GPROF-IR, a novel IR-based precipitation retrieval that
-leverages state-of-the-art neural networks to improve precipitation estimates
-from single-channel IR observations. The algorithm is specifically designed for
-integration into the upcoming release of the Integrated Multi-Satellite
-Retrieval for GPM (IMERG V08) and produces estimates that are consistent with
-the GPROF-NN PMW retrieval. To better constrain surface precipitation, the model
-incorporates the temporal evolution of IR observations. \\
+Here, we introduce GPROF-IR, a novel IR precipitation retrieval that leverages
+state-of-the-art neural network techniques to improve precipitation estimates
+from single-channel IR observations. We demonstrate that the proposed
+convolutional neural network is able to leverage the temporal information in
+sequential half-hourly IR observations to improve precipitation estimates.
+GPROF-IR is specifically designed for integration into the upcoming release of
+the Integrated Multi-Satellite Retrieval for GPM (IMERG V08) and produces
+estimates that are climatologically consistent with the GPROF-NN PMW retrieval.
+\\
 %
-We evaluate GPROF-IR using independent, global reference datasets and
-demonstrate substantial improvements over conventional IR retrievals. While
-performance varies across precipitation regimes, the standalone IR retrieval
-achieves lower mean squared error and higher correlation than IMERG V07 over
-CONUS. \\
+We evaluate GPROF-IR using independent, global reference measurements and
+demonstrate substantial and robust improvements over conventional IR retrievals.
+GPROF-IR provides lower mean squared error and higher correlation coefficient than
+IMERG V07 PMW estimates over continental land masses but remains below the accuracy
+of PMW precipitation estimates over sea surfaces and climate regimes with a greater
+influence from shallow precipitation. \\
 %
-GPROF-IR establishes a new state of the art for single-channel IR precipitation
-retrievals. Its reliance on a single IR channel enables quasi-global
-precipitation estimates from 2000 onward, providing a consistent and accurate
-foundation for improving merged precipitation products.
+By expoiting both spatial and temporal information content in geostationary IR
+observations, GPROF-IR establishes a new state of the art for single-channel IR
+precipitation retrievals. Its reliance on a single IR channel enables producing
+quasi-global precipitation estimates at half-hourly resolution from the year
+1998 onward, providing a consistent and accurate foundation for improving merged
+precipitation products.
 %
 }
 
@@ -99,29 +111,32 @@ foundation for improving merged precipitation products.
 %
 \statement
 
-    Current satellite-based precipitation datasets underestimate high-latitude
-    oceanic precipitation because the radar observations they are based on are
-    insensitive to light and frozen precipitation. We address this issue by
-    developing a novel precipitation estimation algorithm that uses passive
-    microwave observations to estimate precipitation based on reference data
-    from two different types of spaceborne radars: a cloud radar sensitive to
-    light precipitation and a precipitation radar sensitive to moderate to heavy
-    precipitation. This novel approach significantly improves precipitation
-    detection capability and reduces systematic underestimation of oceanic
-    precipitation at high latitudes, which we show by extensive validation
-    against independent precipitation measurements from shipborne instruments.
-    While the results demonstrate that global precipitation estimates of oceanic
-    precipitation can be improved by leveraging the complementary observation
-    capabilities of cloud and precipitation radars, additional analysis of the
-    radar based estimates also reveals inconsistencies between precipitation
-    estimates from the two radars highlighting remaining shortcomings
-    precipitation estimates from spaceborne radars.
+Producing global precipitation estimates at high temporal resolution from
+satellite observations requires the use of geostationary observations
+ to fill gaps between overpasses from passive microwave (PMW) sensors in low-earth
+orbits. Current global precipitation products use infrared (IR) window-channel
+observations that are available at half-hourly resolution from the year 1998
+onwards. However, since these observations are primarily sensitive to cloud-top
+properties, conventional IR-only precipitation algorithms provide only very
+crude precipitation estimates, which negatively affects the accuracy of global
+precipitation datasets.
 
-    The algorithm developed in this work will be used to fill in missing light and
-    frozen precipitation in the next version of passive microwave precipitation
-    datasets from NASA's Global Precipitation Measurements mission. It presents
-    an important step towards improved observations of the hydrological cycle at
-    high latitudes.
+We propose a novel machine-learning-based IR retrieval that substantially
+improves the accuracy of IR-only precipitation estimates from geostationary
+observations. The retrieval is based on a convolutional neural network that
+leverages structural as well as temporal information in the IR imagery to
+provide more accurate precipitation estimates. Extensive validation against
+independent precipitation estimates demonstrates that proposed retrieval
+provides more accurate precipitation estimates than currently operational
+precipitation retrievals from dedicated PMW precipitation sensors over
+continental land masses. While the accuracy of the IR-only retrieval stays below
+that of PMW estimates over oceans and climate zones more strongly influence by
+shallow precipitation, the improvements compared to conventional IR-only
+algorithms are substantial and robust across various climate regimes.
+
+The algorithm presented here will be used to produce next generation global
+satellite precipitation datasets. Additionally, we make the algorithm openly
+available to the scientific community.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -129,31 +144,33 @@ foundation for improving merged precipitation products.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
 \section{Introduction}
+\label{sec:intro}
 
 Current merged precipitation products such as the Integrated Multi-Satellite
-Retrievals for the Global Precipitation Measurement (IMERG,
-\citet{huffman_integrated_2020}), Global Satellite Mapping of Precipitation
-(GSMaP, \citet{Kubota2020}), and the NOAA Climate Prediction Center Morphing
-Technique (CMORPH, \citet{xie2017}), are created by combining precipitation
-estimates derived from two classes of satellite observations: passive microwave
-(PMW) measurements from sensors in low-Earth orbit and infrared (IR)
-observations from geostationary satellites. PMW observations provide relatively
-direct information on surface precipitation because they measure emission and
-scattering signals from hydrometeors within precipitating clouds. In contrast,
-IR observations are primarily sensitive to cloud-top properties and therefore
-provide only indirect information about precipitation. However, because PMW
-sensors are carried on satellites in low-Earth orbit, their observations remain
-too sparse to provide continuous global coverage at hourly resolution. Merged
-precipitation products therefore combine the time-propagated PMW retrievals
-with precipitation estimates derived from geostationary IR observations to fill
-remaining gaps between PMW overpasses.
+Retrievals for the Global Precipitation Measurement
+\citep[IMERG]{huffman_integrated_2020}, Global Satellite Mapping of
+Precipitation \citep[GSMaP]{Kubota2020}, and the NOAA Climate Prediction Center
+Morphing Technique \citep[CMORPH]{xie2017}, are created by combining
+precipitation estimates derived from two classes of satellite observations:
+passive microwave (PMW) measurements from sensors in low-Earth orbit and
+infrared (IR) observations from geostationary satellites. PMW observations
+provide relatively direct information on surface precipitation because they
+measure emission and scattering signals from hydrometeors within precipitating
+clouds \citep{kidd_status_2011}. In contrast, IR observations are primarily
+sensitive to cloud-top properties and therefore provide only indirect
+information about precipitation \citep{tapiador_gpm_2011, kidd_global_2011}.
+However, because PMW sensors are carried on satellites in low-Earth orbit, their
+observations remain too sparse to provide continuous global coverage at hourly
+resolution. Merged precipitation products therefore combine the time-propagated
+PMW retrievals with precipitation estimates derived from geostationary IR
+observations to fill remaining gaps between PMW overpasses.
 
 In practice, the contribution of IR-based precipitation estimates to merged
 precipitation products remains limited because current IR retrieval algorithms
 exhibit substantially larger uncertainties than PMW-based retrievals. As a
 result, error-aware merging frameworks assign only limited weight to IR
 precipitation estimates. As illustrated in Fig.~\ref{fig:availability}, for example, the average IR
-contribution to 30-minute precipitation estimates in the tropics in IMERG V7
+contribution to 30-minute precipitation estimates in the tropics in IMERG V07
 remains below 25\%, despite PMW observations being available only once every two
 hours on average. Consequently, the merged precipitation fields rely heavily on
 the temporal propagation of time-adjacent PMW retrievals.
@@ -166,28 +183,29 @@ Average availability at any one half-hour of passive microwave observations from
 \end{figure}
 
 This dependence on advected PMW estimates can produce physically implausible
-representations of rapidly evolving precipitation systems. Figure~\ref{fig:evolution} highlights
-this issue for a convective storm case: while the precipitation field changes
-markedly between the first and fourth half-hourly timesteps, it remains nearly
-static in the intervening period. Inspection of the corresponding PMW and IR
-retrievals shows that this stagnation coincides with a PMW overpass at 15:00
-UTC. In IMERG, PMW estimates are given exclusive weight within a ±30-minute
-window around such overpasses \citep{huffman2019imerg_v07_atbd}, such that any
-variability during this interval arises solely from advection of the PMW-derived
-precipitation rates. Outside this enforced PMW-only window, IR-based estimates
-begin to contribute to the merged field. Because the IR and coincident PMW
-retrievals differ substantially, their combination introduces abrupt temporal
-changes. This suggests that the temporal evolution of the merged product
-is driven more by inconsistencies between the retrievals than by the underlying
+representations of rapidly evolving precipitation systems.
+Figure~\ref{fig:evolution} highlights this issue for a convective storm case.
+While the precipitation field changes markedly between the first and fourth
+half-hourly timesteps, it remains nearly static in the intervening period.
+Inspection of the corresponding PMW and IR retrievals shows that this stagnation
+coincides with a PMW overpass at 15:00 UTC. In IMERG, PMW estimates are given
+exclusive weight within a ±30-minute window around such overpasses
+\citep{huffman2019imerg_v07_atbd}, such that any variability during this
+interval arises solely from advection of the PMW-derived precipitation rates.
+Outside this enforced PMW-only window, IR-based estimates begin to contribute to
+the merged field. Because the IR and coincident PMW retrievals differ
+substantially, their combination introduces abrupt temporal changes. For this
+exmple, the temporal evolution of the merged precipitation is driven more by
+inconsistencies between the PMW and IR retrievals than by the underlying
 precipitation dynamics.
 
 \begin{figure}[h]
  \centerline{\includegraphics[width=37pc]{figures/figure02.pdf}}
  \caption{
-    Example evolution of convective precipitation cells in IMERG V7. The five
-    columns show the half-hourly evolution of the precipitation field from 14:00 to
+    Evolution of convective precipitation cells in IMERG V07. The five
+    columns show the half-hourly precipitation field from 14:00 to
     16:00 UTC on April 13, 2022. The first row shows the change in the precipitation
-    field relative to the next time step. Rows 2-4 show the final merged IMERG V7
+    field relative to the next time step. Rows 2-4 show the final merged IMERG V07
     precipitation field, the passive-microwave-derived precipitation field, and the
     infrared-derived precipitation field, respectively.
  }\label{fig:evolution}
@@ -195,33 +213,27 @@ precipitation dynamics.
 
 The example above underscores the need for more accurate IR-based precipitation
 estimates to improve the representation of precipitation processes in merged
-products. Recent work has shown that machine-learning-based retrievals that
-exploit the spatial structure of satellite imagery can substantially enhance
-precipitation estimates from geostationary observations even when limited to
-single-channel IR window measurements \citep{pfreundschuh_improve_2022}.
-Building on these advances, this study introduces the Goddard Profiling
-Algorithm Infrared (GPROF-IR), a new retrieval designed to provide improved
-IR-based background precipitation estimates for next-generation merged products.
-The name GPROF-IR reflects its intended role as a complement to the GPROF V08
-PMW retrieval, which will underpin the next IMERG release; it does not imply
-that the algorithm retrieves vertical hydrometeor profiles.
+products.
 
-GPROF-IR builds on the GPROF-NN retrieval framework
-\citep{pfreundschuh_gprof-nn_2022}, which replaces the conventional pixel-wise
-Bayesian approach used in earlier GPROF versions with a convolutional neural
-network that leverages spatial context in satellite observations. While PMW
-measurements provide relatively direct sensitivity to precipitation, IR
-observations are only indirectly related to surface rainfall and therefore stand
-to benefit even more from spatially aware retrieval methods. To exploit this
-potential, we adapt the GPROF-NN framework to infer precipitation from
-geostationary IR imagery and assess its performance as a background component in
-merged precipitation products. This manuscript presents the GPROF-IR algorithm
-and evaluates its performance against independent reference datasets. Section 2
-details the retrieval implementation and the configurations considered for
-operational use. Section 3 quantifies retrieval accuracy using independent test
-data and examines the consistency of the resulting precipitation estimates.
-Section 4 discusses the implications for the development of next-generation
-merged precipitation products.
+Recent work has shown that machine-learning-based retrievals exploiting the
+spatial structure of satellite imagery can substantially enhance precipitation
+estimates from geostationary observations \citep{amell_probabilistic_2025} ---
+even when limited to single-channel IR window measurements
+\citep{pfreundschuh_improved_2022}. Building on these advances, this study
+introduces the Goddard Profiling Algorithm Infrared (GPROF-IR), a new retrieval
+designed to provide improved IR-based background precipitation estimates for
+next-generation merged precipitation products. The name GPROF-IR reflects its
+intended role as a complement to the GPROF-NN algorithm
+\citep{pfreundschuh_gprof-nn_2022}, which will be used to produce PMW
+precipitation estimates for IMERG V08; it does not imply that the algorithm
+retrieves vertical hydrometeor profiles. GPROF-IR uses a similar convolutional
+network model as GPROF-NN to leverage spatial informaiton content in the IR
+observaitons. Expanding this approach, GPROF-IR  integrates up to five consecutive
+half-hourly IR images into the input. The inclusion of temporal information provides robust accuracy
+improvements over the single-time-step baselines demonstrating that the retrieval is
+able to leverage information on the evolution of cloud systems to constrain
+surface precipitation estimates.
+
 
 
 \section{Methods and Data}
@@ -233,23 +245,24 @@ merged precipitation products.
 
 The input data used by the GPROF-IR retrieval are geostationary IR observations
 from the NOAA Climate Prediction Center globally merged IR product version 1
-\citep{ncep_cpc_gpm_mergir_v1, janowiak2001real}. The dataset provides merged
-geostationary IR observations from the 11-$\mu$m IR window from the global
-constellation of geostationary satellites. The dataset provides observations at
-half-hourly resolution covering much of the globe between $60^\circ$S and $60^\circ$N
-from 1998 until the present.
+\citep{ncep_cpc_gpm_mergir_v1, janowiak2001real}. The CPC IR dataset compiles
+geostationary IR observations from the 11-$\mu$m IR window channel from the
+global constellation of geostationary satellites on a regular latitude-longitude
+grid. The gridded observations at half-hourly resolution cover much
+of the globe between $60^\circ$S and $60^\circ$N from 1998 until the present.
 
 \subsubsection{GPM 2BCMB}
 
 We evaluate two sources of target surface precipitation rates used for training
-the GPROF-IR retrieval. The first source is derived from the GPM Level-2
-combined radar–radiometer product \citep{cmb_data}. This 2BCMB product
+the GPROF-IR retrieval. The first source is derived from the level-2
+combined radar–radiometer product (2BCMB \citep{cmb_data}) of the Global Precipitation
+Measurement (GPM, \citep{hou_global_2014}). The 2BCMB product
 integrates observations from the GPM Dual-Frequency Precipitation Radar (DPR)
 and the GPM Microwave Imager (GMI) within a variational retrieval framework,
 yielding more accurate precipitation estimates than either sensor alone. It
 serves as the primary reference dataset for training PMW retrievals across the
-GPM constellation and is widely regarded as the most reliable global
-precipitation record currently available.
+GPM constellation and is widely understood to provide  the most reliable global
+precipitation measurements currently available.
 
 \subsubsection{GPROF V08 GMI}
 
@@ -264,34 +277,44 @@ that the accuracy of GMI-based precipitation estimates is comparable to that of
 GPROF V08 -- the next operational version of the Goddard Profiling Algorithm
 (GPROF, \citet{kummerow2015evolution}) -- will use an updated version of the
 GPROF-NN 3D retrieval presented in \citep{pfreundschuh_gprof-nn_2022}. While the
-GPROF V08 retrieval is also based on reference precipitation rates from the GPM 2BCMB,
-it implements several ad-hoc solutions to address shortcomings of the reference data.
-Among others, these include the use reference precipitation estimates from ground-based radar over snow-covered surfaces and the filling-in of light and frozen oceanic precipitation that is missed by the DPR using the GPROF-NN XPR retrieval (Pfreundschuh, 2026).
+GPROF V08 retrieval is also based on reference precipitation rates from the GPM
+2BCMB product, it implements several ad-hoc solutions to address shortcomings of
+the reference data. Among others, these include the use reference precipitation
+estimates from ground-based radar over snow-covered surfaces and the filling-in
+of light and frozen oceanic precipitation that is missed by the DPR using the
+GPROF-NN XPR retrieval \citep{pfreundschuh_xpr_2026}.
 
 \subsection{Baseline Precipitation Estimates}
 
 Since the purpose of GPROF-IR is to provide improved precipitation estimates for
 the upcoming version of the IMERG, we compare the GPROF-IR precipitation rates
 against PMW and IR precipitation estimates from the current IMERG V07 product.
-We use precipitation estimates from the IMERG Final run
-\citep{gpm_imerg_final_v07}. IMERG uses a Kalman-filter-based merging scheme
-\citep{huffman2019imerg_v07_atbd} to combine MW precipitation rates from GPROF
+Specifically, we use precipitation estimates from the IMERG Final run
+\citep{gpm_imerg_final_v07}. IMERG V07 uses a Kalman-filter-based merging scheme
+\citep{huffman2019imerg_v07_atbd} to combine PMW precipitation rates from GPROF
 V07 and the Persiann dynamic infrared--rain rate (PDIR-now) retrieval
 \citep{nguyen2020persiann}. Where possible we will consider the accuracy of the
 PMW and IR-based estimates separately using the \textit{MWPrecipitation} and
 \textit{IRPrecipitation} fields from IMERG V07.
 
 As an additional baseline, we use precipitation estimates from the ERA5
-reanalysis dataset \citep{hersbach_er5_2020}. ERA5 is the leading global
+reanalysis dataset \citep{hersbach_era5_2020}. ERA5 is the leading global
 reanalysis dataset providing continuous global coverage at hourly temporal
-resolution and a spatial resolution of 0.025$^\circ$. ERA5 provides
-global precipitation estimates since 1940 and therefore constitutes an
-alternative to global merged precipitation products for studying the
-evolution of precipitation systems. In contrast to satellite-based precipitation products, which
-generally estimate precipitation rates directly from observations, ERA5 uses a
-numerical weather prediction model to determine the atmospheric state that
-provides the best agreement with a wide range of historical meteorological
-observations.
+resolution and a spatial resolution of 0.25$^\circ$. ERA5 provides global
+precipitation estimates since 1940 and therefore constitutes an alternative to
+global merged satellite precipitation products for studying the evolution of precipitation
+systems. In contrast to satellite-based precipitation products, which generally
+estimate precipitation rates directly from observations, ERA5 uses a numerical
+weather prediction model to determine the atmospheric state that provides the
+best agreement with a wide range of meteorological observations.
+
+Finally, we also compare global precipitation distributions from the GPROF-IR
+retrievals to the GPCP V3.3 \citep{gpcp_v33_precip} precipitation climatology.
+GPCP combines satellite and gauge precipitation measurements to provide a
+high-quality precipitation record for climate applications. Since GPCP is
+generally considered the best global precipitation record for climate
+applications, it provides an important reference point for the GPROF-IR
+retrievals.
 
 \subsection{Validation Data}
 
@@ -307,20 +330,37 @@ precipitation retrievals. It integrates high-quality reference data from
 gauge-corrected ground radars and the WegenerNet high-density gauge network
 \citep{fuchsberger_wegenernet_2021}. The testing split of the benchmark provides
 an easily accessible and comprehensive validation resource to for satellite
-precipitation retrieval. By using the publicly available SatRain data
+precipitation retrievals. By using the publicly available SatRain dataset
 and following its standardized evaluation protocol, we ensure that the
 validation results of the GPROF-IR retrievals are reproducible and directly
-comparable with other algorithms.
+comparable to other algorithms.
 
-The testing split of the dataset comprises one year of GMI overpasses over the
+The testing split of the dataset comprises one year of GMI overpasses over
 CONUS and Korea as well as two years of overpasses over the Wegener gauge
 network in Austria. The CONUS testing data is derived from gauge-corrected
 precipitation estimates from the NOAA Multi-Radar Multi-Sensor (MRMS,
-\citep{smith_multi-radar_2016}) dataset; the Korea data is derived from
+\citep{smith_multi-radar_2016}) products; the Korea data is derived from
 gauge-corrected precipitation estimates provided by the Korean Meteorological
-Agency. To accommodate for the testing resolution of 0.036 degree used by the
+Agency \citep{ryu_radar_2025}. To accommodate for the testing resolution of 0.036 degree used by the
 SatRain dataset, all GPROF-IR results are interpolated to the SatRain grid using
 bi-linear interpolation.
+
+
+\subsubsection{OceanRAIN Shipborne Distrometer Measurements}
+
+Since the SatRain benchmark dataset relies on measurements from gauges and
+gauge-corrected ground-based radars, it is limited to land surfaces. To also
+validate the retrievals over ocean, we use shipborne distrometer measurements
+from the OceanRAIN dataset \citep{klepp2018oceanrain} from all measurements
+available during the years 2017 and 2019. The SatRain measurement are provided
+at 1-min temporal resolution, which we average over 30 min centered on the
+nominal time of corresponding GPROF-IR retrieval. The spatial distribution of
+the OceanRAIN--GPROF-IR match-ups are shown in Fig.~\ref{fig:ocean_rain}. Since
+the validation period overlaps with the training data, we exclude all
+measurements that coincide with GMI overpasses, which were used to create the
+training data for GPROF-IR. This excludes any observations that the retrieval
+may have encountered during training and should therefore avoid potential
+positive biases in the validation due to data leakage.
 
 \begin{figure}[h]
  \centerline{\includegraphics[width=37pc]{figures/figure03.png}}
@@ -332,54 +372,51 @@ bi-linear interpolation.
 \end{figure}
 
 
-\subsubsection{OceanRAIN Shipborne Distrometer Measurements}
-
-Since the SatRain benchmark dataset relies on measurements from gauges and
-gauge-corrected ground-based radars, it is limited to land surfaces. To also
-validate the retrievals over ocean, we use shipborne distrometer measurements
-from the OceanRAIN dataset \citep{klepp2018oceanrain}.
-Since OceanRAIN data is currently available only up until December 2018, we use
-all available data from 2017 to 2018. These measurements are effectively point
-sources over 30-minute windows, which we match to the closest IR retrievals.
-The spatial distribution of the resulting match-ups are shown in
-Fig.~\ref{fig:ocean_rain}. Since the validation period overlaps with the
-training data, we exclude all measurements that coincide with GMI overpasses.
-This excludes any observations that the retrieval may have encountered during
-training and should therefore reduce potential positive biases in the
-validation.
-
-
 \subsection{Implementation}
 \subsubsection{Neural Network Model}
 
-The GPROF-IR retrieval is based on the same U-Net neural network used for the
+The GPROF-IR retrieval is based on the same U-Net \citep{ronneberger_u-net_2015} architecture used for the
 GPROF V08 retrieval. The network – as illustrated in Fig. 2 – is composed of
-EfficientNet-V2–style inverted bottleneck convolutional blocks (Tan & Le, 2021).
-Following the normalization and activation design adopted in ConvNeXt (Liu et
-al., 2022), each convolutional block uses Layer Normalization (Ba et al., 2016)
-and GELU activation functions (Hendrycks & Gimpel, 2016). Compared to the
+EfficientNet-V2–style inverted bottleneck convolutional blocks \citep{tan_efficientnetv2_2021}.
+Following the normalization and activation design adopted in ConvNeXt \citep{liu_convnet_2022}, each convolutional block uses Layer Normalization \citep{ba2016layer}
+and GELU activation functions \citep{hendrycks2016gaussian}. Compared to the
 architecture of the GPROF V08 models, both width and depth of the model were
 reduced in order to accommodate operational requirements on processing time.
 Note that \textit{model} is used in this paper to denote a neural network model, not to
 be confused with a numerical model of precipitation, weather, or climate
 processes.
 
-The retrieval input consists of single-channel infrared observations
-from up to five consecutive timesteps leading up to the nominal time. To
-leverage the comparably high resolution of the IR input observations, the model
-ingests the gridded IR observations at their native 0.036$^\circ$ and 30 min
-resolution. Since the effective spatial resolution of the retrieved
+The retrieval input consists of single-channel infrared observations from up to
+five consecutive timesteps leading up to the nominal time. Preceding timesteps
+were used instead of centered timesteps to avoid impacting the latency of
+near-real-time retrievals. \\
+
+To leverage the comparably high resolution of the IR input observations, the
+model ingests the gridded IR observations at their native 0.036$^\circ$ and 30
+min resolution. Since the effective spatial resolution of the retrieved
 precipitation can be expected to be much lower than the 0.036$^\circ$ of the
 input observations, the model output is produced at half of the input spatial
 resolution to reduce inference complexity as well as storage requirements. The
-input consists of image patches of size 512 px x 512 px at 0.036$^\circ$ that are
-mapped to precipitation estimates of size 256 px $\times$ 256 px with a resolution of
-0.072$^\circ$. The model outputs are therefore at a spatial resolution of
-0.072$^\circ$ and a temporal resolution of 30 minutes. The training dataset
-comprises IR observations paired with corresponding reference precipitation
-estimates within $\pm$15 minutes of the nominal observation time. The model is
-trained using all available reference data from 2015–2018, while independent
-data from 2022 are used for evaluation of retrieval performance.
+input consists of image patches of size 512 px x 512 px at 0.036$^\circ$-resolution
+that are mapped to precipitation estimates of size 256 px $\times$ 256 px with a
+resolution of 0.072$^\circ$. The model outputs are therefore at a spatial
+resolution of 0.072$^\circ$ and a temporal resolution of 30 minutes.
+
+The training dataset comprises IR observations paired with corresponding
+reference precipitation estimates within $\pm$15 minutes of the nominal
+observation time. The model is trained using all available reference data from
+2015–2018, while independent data from 2022 are used for evaluation of retrieval
+performance. The network is trained to predict 32 quantiles of the posterior
+distribution of the target precipitation rate using a quantile-regression loss
+\citep{pfreundschuh_neural_2018}. The principal retrieval output is the mean of
+the posterior distribution calculated from these 32 quantiles by approximating
+the cumulative distribution function and calculating its mean. The resulting
+posterior mean is approximately bias free and minimizes the mean-squared error
+of retrieval output. However, the probabilistic nature of the network also
+allows the calculation of other statistical properties of the posterior
+distribution such as exceedance probability for arbitrary precipitation rates,
+which we will use later to assess the precipitation detection capabilities of
+the model.
 
 \begin{figure}[h]
  \centerline{\includegraphics[width=37pc]{figures/figure03.pdf}}
@@ -395,13 +432,12 @@ surface precipitation, as they are primarily sensitive to cloud-top properties.
 However, their high temporal resolution captures the evolution of cloud systems,
 which can help constrain precipitation at the surface. To exploit this temporal
 information, we evaluate retrieval configurations that incorporate multiple
-preceding IR timesteps. Preceding timesteps were used instead of centered
-timesteps to avoid impacting the latency of near-real-time retrievals.
-Specifically, we consider models that include two and four additional prior
-observations (for a total of three and five timesteps, respectively). These
-multi-timestep models are trained sequentially: the single-timestep model is
-trained first, its weights are used to initialize the three-timestep model, and
-the latter is subsequently used to initialize the five-timestep model.
+preceding IR timesteps. Specifically, we consider models that include two and
+four additional prior observations (for a total of three and five timesteps,
+respectively). These multi-timestep models are trained sequentially: the
+single-timestep model is trained first, its weights are used to initialize the
+three-timestep model, and the latter is subsequently used to initialize the
+five-timestep model.
 
 Overall, we test the following retrieval configurations:
 
@@ -417,6 +453,7 @@ Overall, we test the following retrieval configurations:
 \end{description}
 
 \section{Results}
+\label{sec:results}
 
 Below we asses the retrieval accuracy of GPROF-IR, validate it using
 independent precipitation estimates, and characterize the resulting global
@@ -436,16 +473,17 @@ GMI reference data, and (d) a 5-step retrieval using GMI reference data.
 \end{figure}
 
 We begin by assessing the retrieval accuracy on temporally independent testing
-data from the year 2022. The testing data has been derived in the same way as
-the training data used for the GPROF-IR configuration but instead of data from
-the years 2015--2018 it uses data from the year 2022.
+data from the year 2022. Similar to the training data, the testing data for the
+different GPROF-IR configurations uses different target precipitation estimates.
+The testing data for the GPROF-IR (CMB, 1) configuration uses reference estimates
+from 2BCMB whereas the other configurations use estimates from GPROF V08 GMI.
 
 Figure 3 displays scatter plots and accuracy statistics for the four tested
 retrieval configurations. All four retrievals demonstrate skill in reproducing
 the reference precipitation estimates with low biases and mean-squared error and
 high correlation coefficients. However, they also exhibit a tendency to
-overestimate light precipitation and underestimate high precipitation, which
-typical for precipitation retrievals from passive sensors. The GPROF-IR (CMB, 1)
+overestimate light precipitation and underestimate heavy precipitation, which
+is typically observed for precipitation retrievals from passive sensors. The GPROF-IR (CMB, 1)
 retrieval exhibits notably larger spread than the GPROF V08 GMI-based
 retrievals, which is a result of the higher spatial resolution of the 2BCMB
 reference data. The three-timestep retrieval GPROF-IR (GMI, 3) shows small but
@@ -502,8 +540,7 @@ where most PMW sensors have higher information content. Additionally, warm
 precipitation with lower cloud tops and thus weaker signatures in the IR imagery
 plays a larger role over the Korea domain than over CONUS, which may further
 contribute to the relatively lower accuracy of the IR retrievals
-compared to the IMERG (GMI) estimates.
-
+compared to the IMERG GMI estimates.
 
 
 \begin{figure}[h]
@@ -516,57 +553,152 @@ GPROF-IR retrieval accuracy assessed against baseline retrievals using the SatRa
 \paragraph{Effective Resolution}
 
  The effective resolution is defined as the smallest spatial scale at which the
- spatial coherence exceeds 1/sqrt(2), which corresponds to the scale at
- which the signal-to-noise ratio of the captured spatial variability exceeds
- one. Since the analysis of the effective resolution requires spatially continuous
- precipitation fields covering at least the resolved scales, the SatRain dataset only
- allows assessing the effective resolution over the CONUS and Korea domains.
+spectral coherence exceeds $\sqrt{\frac{1}{2}}$. This corresponds to the
+smallest horizontal extent of a precipitation feature for which the
+signal-to-noise ratio of the captured spatial variability exceeds one. Since the
+analysis of the effective resolution requires spatially continuous precipitation
+fields covering at least the resolved scales, the SatRain dataset only allows
+assessing the effective resolution over the CONUS and Korea domains.
 
- The spectral coherence curves for the CONUS and Korea domains are shown in Fig.
- 6. Over CONUS, The GPROF-IR retrieval achieves an effective resolution of 0.6
- degree for the GPROF-IR (GMI, 5) configuration, 0.65 for the GPROF-IR (GMI, 3)
- configuration, and 0.68 for the GPROF-IR (GMI, 1) configuration. The 2BCMB-based
- retrieval, on the other hand, only achieves an effective resolution of 0.98
- degree. Over the Korea domain, the effective resolutions are much lower with
- resolutions around 1.25 degree for the GPROF-IR (GMI, 3) and GPROF-IR (GMI, 5)
- retrievals and 1.4 for the GPROF-IR (GMI, 1) and GPROF-IR (CMB) configurations.
- The ranking of the effective resolution largely mirrors that of the MAE, MSE,
- and linear correlation coefficient over CONUS.
+The spectral coherence curves for the CONUS and Korea domains are shown in
+Fig.~\ref{fig:spectral_coherence}. Over CONUS, GPROF-IR (GMI, 5) and GPROF-IR
+(GMI, 3) configuration achive effective resolutions of 0.6$^\circ$ whereas the
+GPROF-IR (GMI, 1) achieves an effective resolution of 0.63. The 2BCMB-based
+retrieval only achieves an effective resolution of 0.9$^\circ$. Over the Korea
+domain, the effective resolutions are lower with resolutions around 0.84$^\circ$
+for the GPROF-IR (GMI, 3) and 1.07$^\circ$ for the GPROF-IR (GMI, 5) retrieval
+whereas and the GPROF-IR (GMI, 1) and GPROF-IR (CMB) configurations do not reach
+the $\sqrt{\frac{1}{2}}$ threshold within the resolved scale range.
 
  The GPROF-IR (GMI, 3) and GPROF-IR (GMI, 5) retrievals achieve effective
- resolutions that are about two-times finer than the GMI-based IMERG V07 PMW
- estimates over CONUS. However, the situation is reversed over the Korea domain,
- where the IMERG V07 estimates are more than two-time finer than the best
- GPROF-IR retrievals. Again, this highlights the advantage of PMW over water
- surfaces as well as the regime dependence of the accuracy of the IR-based
- retrievals.
+resolutions that are about 25\% finer than the GMI-based IMERG V07 PMW estimates
+over CONUS. However, the situation is reversed over the Korea domain, where the
+IMERG V07 GMI precipitation estimates are about 33 \% finer than the best
+GPROF-IR retrievals. Both the IMERG IR and ERA5 precipitation fields stay far
+below the $\sqrt{\frac{1}{2}}$ threshold throughout the resolved scale range indicating
+that they can't reliably resolve precipitation structures finer than
+$1.4^\circ$. These results highlight the substantial improvements in retrieval
+accuracy achieve by the GPROF-IR retrieval. GPROF-IR outperforms conventional
+PMW retrievals in terms of MSE, linear correlation, and effective resolution
+over the assessed continental climate zones and closes much of the gap that
+existed between conventional IR and conventional PMW retrievals over sea
+surfaces and climates with larger contributions from shallow precipitation.
+
+\begin{figure}[h]
+ \centerline{\includegraphics[width=37pc]{figures/figure07.pdf}}
+ \caption{
+  Spectral coherence curves for the GPROF-IR retrievals and baseline precipitation
+  estimates assessed using the CONUS and Korea domains of the SatRain benchmark
+  dataset. Panels (a) and (b) show the spectral coherence across scales in degree
+  for the CONUS and Korea domains, respectively. Dashed black line marks the
+  $\sqrt{\frac{1}{2}}$ threshold used to define the effective resolution of the precipitation
+  estimates.
+ }\label{fig:spectral_coherence}
+\end{figure}
+
+\paragraph{Precipitation Detection}
+
+Figure~\ref{fig:precipitation_detection} assesses the skill of the GPROF-IR
+retrievals to detect precipitation and heavy precipitation. Thresholds of 0.1 mm
+h$^{-1}$ and 10 mm h$^{-1}$ are used to identify precipitation and heavy
+precipitation, respectively. For the GPROF-IR retrievals, two different
+detection approaches are compared: The first approach (red shading) is to use
+the precipitation rate corresponding to the mean of the posterior distribution,
+which is provide as the principal quantitative precipitation output from the
+retrieval. The second approach is to use the probabilistic output of the model
+to calculate the probability of the observed precipitation rate to exceed the
+respective threshold (green shading) and use a detection threshold of 0.5
+as a detection criterion.
+
+Using the retrieved GPROF-IR precipitation rate to detect precipitation yields
+slightly better detection skill than the IMERG IR and ERA5 baselines but remains
+lower than the dection skill of the IMERG GMI estimates. The detection skill is
+improved substantially when exceedance probabilities are used instead of
+precipitation rates. Using a detection threshold of 0.5, all GPROF-IR
+configurations yield higher precipitation detection accuracy than IMERG GMI
+across all testing domains. For precipitation detection, the GPROF-IR (CMB, 1)
+configuration performs best among the GPROF-IR configuration, which is in
+contrast to the relative performance found for precipitation quantification.
+
+For the detection of heavy precipitation over CONUS, using the GPROF-IR
+precipitation rates yields better detection skill than the IMERG GMI estimates
+but the detection skill is further improved when the probabilistic GPROF-IR
+output is used. Over the Korea domain, only the probabilistic GPROF-IR (CMB, 1)
+configuration yields higher detection skill than IMERG GMI. Over Austria only
+the IMERG GMI retrieval shows marginal skill, which is likely becuase of these
+events occurring too infrequently over the domain.
+
+
+\begin{figure}[h]
+ \centerline{\includegraphics[width=37pc]{figures/figure08.pdf}}
+ \caption{
+   Detection skill for precipitation and heavy precipitation assessed on the SatRain benchmark dataset.
+   Panel (a) shows the Heidke Skill Score (HSS) for the detection of precipitation (defined as any grid point
+   exceeding $0.1$ mm h$^{-1}$). Panel (b) shows the corresponding results for the detection of heavy
+   precipitation (defined as grid points exceeding 10 mm h$^{-1}$). Results for the GPROF-IR are presented
+   using the retrieved precipitation rate as detection criterion (red shades) and using the probabilistic
+   output to calculate exceedance properties and using a detection threshold of 0.5.
+ }\label{fig:precipitation_detection}
+\end{figure}
+
+To investigate the higher skill of the GPROF-IR (CMB, 1) configuration for
+precipitation detection, the probabilistic detection skill is assessed using
+precision and recall curves in Fig.\ref{fig:precision_recall}. Despite yielding
+higher HSS, the precision-recall cuve of the GPROF-IR (CMB, 1) retrieval stays
+below that of the other configurations for both precipitation detection and
+heavy precipitation detection, indicating that its detection skill across
+detection thresholds is in fact lower than that of the other configurations. The
+filled marker in each plot marks the precision and recall for the detection
+threshold of 0.5 used for the results in Fig.~\ref{fig:precipitation_detection}.
+The 0.5 threshold is systematically located at lower recall and higher precision
+for the GPROF-IR (CMB, 1) configuration than for the GPROF V08 GMI based
+retrievals. The higher HSS scores for the GPROF-IR (CMB, 1) retrieval are thus
+not due a higher skill of the retrieval to detect precipitation or heavy
+precipitation, but rather due to different detection characteristics resulting
+from the use of 0.5 as detection threshold.
+
+The GPROF-IR retrievals thus show similar skill for precipitation detection as
+for precipitation quantification, when the statistical characteristics of the
+retrieval output are taken into account. This further highlights that
+detection-skill metrics should be used with caution to assess the skill of
+precipitation retrievals.
+
+\begin{figure}[h]
+ \centerline{\includegraphics[width=37pc]{figures/figure09.pdf}}
+ \caption{
+   Precision recall curves for the probability of precipitation and probability of heavy precipitation outputs of
+   the GPROF-IR retrievals. Filled markers show the reuslts obtained using a detection threshold of 0.5
+   used to produce the results in Fig.~\ref{fig:precipitation_detection}
+ }\label{fig:precision_recall}
+\end{figure}
 
  \paragraph{Case Studies}
 
 We further assess the accuracy of the GPROF-IR retrievals using two case studies
 over the Korea and CONUS domains.
 
-Figure~\ref{fig:case_study_1} shows reference and retrieved precipitation during the landfall of
-Typhoon Khanun over the Korean peninsula. The principal precipitation features
-in the reference precipitation field are two strong cyclonic rain bands in the
-south-eastern quadrant of the domain as well as strong convection in the
-north-eastern quadrant. The ERA5 estimates capture the general cyclonic
-structure and the precipitation in the north-eastern part of the scene but lack
-finer convective structures. The IMERG GMI precipitation estimates yield the
-best agreement with the reference estimates capturing the principal rain bands
-as well as the embedded convection. The IMERG IR precipitation estimates, on the
-other hand, fail to reproduce the structure of the cyclone. Although the
-estimates contain substantial small-scale variability, it is unrelated to any of
-the fine-scale structures in the reference data. The single-step GPROF-IR
-retrievals reproduce the large-scale precipitation structures but also lack any
-of the finer embedded precipitation structures. The inclusion of temporal
-information yields notable and visible improvements with the retrieval being
-clearly able to reproduce more of the embedded precipitation features and the
-negative bias being reduced from -38 \% for the GPROF-IR (CMB, 1) retrieval to
--14 \% for the GPROF-IR (GMI, 5) retrieval.
+Figure~\ref{fig:case_study_1} shows reference and retrieved precipitation during
+the landfall of Typhoon Khanun over the Korean peninsula \citep{bi_khanun_2025}.
+The principal precipitation features in the reference precipitation field are
+two strong cyclonic rain bands in the south-eastern quadrant of the domain as
+well as strong convection in the north-eastern quadrant. The ERA5 estimates
+capture the general cyclonic structure and the precipitation in the
+north-eastern part of the scene but lack finer convective structures. The IMERG
+GMI precipitation estimates yield the best agreement with the reference
+estimates capturing the principal rain bands as well as the embedded convection.
+The IMERG IR precipitation estimates, on the other hand, fail to reproduce the
+structure of the cyclone. Although the estimates contain substantial small-scale
+variability, it is unrelated to any of the fine-scale structures in the
+reference data. The single-step GPROF-IR retrievals reproduce the large-scale
+precipitation structures but also lack any of the finer embedded precipitation
+structures. The inclusion of temporal information yields notable and visible
+improvements with the retrieval being clearly able to reproduce more of the
+embedded precipitation features and the negative bias being reduced from -38 \%
+for the GPROF-IR (CMB, 1) retrieval to -14 \% for the GPROF-IR (GMI, 5)
+retrieval.
 
 \begin{figure}[h]
- \centerline{\includegraphics[width=37pc]{figures/figure07.pdf}}
+ \centerline{\includegraphics[width=37pc]{figures/figure10.pdf}}
  \caption{
     Reference and retrieved precipitation during landfall of Typhoon Khanun on the
     Korean peninsula. Panel (a) shows reference precipitation estimates from
@@ -602,7 +734,7 @@ retrieval is able to provide more accurate estimates than IMERG GMI for these
 kind or precipitation regimes.
 
 \begin{figure}[h]
- \centerline{\includegraphics[width=37pc]{figures/figure08.pdf}}
+ \centerline{\includegraphics[width=37pc]{figures/figure11.pdf}}
  \caption{
     Reference and retrieved precipitation for a convective storms system on
     April 13, 2022 over CONUS. Panel (a) shows reference precipitation estimates
@@ -615,7 +747,7 @@ kind or precipitation regimes.
 \subsubsection{OceanRAIN}
 
 The validation using the SatRain dataset was largely limited to measurements
-over land. To complement the assessment, we therefore evaluate the GPROF-IR
+over land. To complement this land-focused validation, we also evaluate the GPROF-IR
 (CMB, 1) and GPROF-IR (GMI, 3) retrievals against shipborne in-situ
 precipitation measurements from the OceanRAIN dataset. The assessment focuses on
 the GPROF-IR (GMI, 3) retrieval, which was selected as the preferred
@@ -623,11 +755,11 @@ configuration for operational processing as its accuracy is close to that of the
 five-timestep configuration while requiring less input data. Additionally, we
 include the GPROF-IR (CMB, 1) configuration to assess the impact of using GPROF
 V08 GMI reference estimates as training targets. The GPROF V08 training data
-uses GPROF-NN XPR retrieval to fill in missing light precipitation in the 2BCMB
+uses the GPROF-NN XPR retrieval to fill in missing light precipitation in the 2BCMB
 dataset over oceans. This has been shown to reduce systematic underestimation of
-high-latitude and frozen precipitation. However, the validation in Pfreundchuh
-(2026) was limited a GMI overpasses over the OceanRAIN vessels. The continuous
-availability of the IR observations, thus provides an opportunity to indirectly
+high-latitude and frozen precipitation \citep{pfreundschuh_xpr_2026}. However, the
+analysis was limited to GMI overpasses over the OceanRAIN vessels. The continuous
+availability of the IR observations thus provides an opportunity to indirectly
 validate the representation of light and frozen precipitation in GPROF V08
 retrievals using a much larger number of samples.
 
@@ -645,7 +777,7 @@ about 18\%, while the GPROF-IR (CMB, 1) retrieval is biased low by about 38\%.
 This improved representation of high-latitude and frozen precipitation provides
 further evidence that the GPROF-NN XPR retrieval can capture light and frozen
 precipitation missed by GPM DPR-based precipitation estimates and thus
-reinforces the findings from the initial validation in Pfreundschuh (2026).
+confirms the findings from the initial validation in \citet{pfreundschuh_xpr_2026}.
 
 In terms of retrieval error, the validation against shipborne measurements shows
 results similar to those obtained over land. The GPROF-IR retrievals
@@ -659,13 +791,13 @@ therefore more representative of the average IMERG accuracy rather than the
 best-case accuracy during GMI overpasses.
 
 \begin{figure}[h]
- \centerline{\includegraphics[width=37pc]{figures/figure08.pdf}}
+ \centerline{\includegraphics[width=37pc]{figures/figure12.png}}
  \caption{
 GPROF-IR retrievals from the years 2017 and 2018 assessed against shipborne
 distrometer measurements from the OceanRAIN dataset. Panels (a) – (d) compare
 bias, mean absolute error, mean squared error, and correlation coefficient of
 the two of GPROF-IR configurations against IMERG baseline estimates. Each panel
-shows results for all matchups, high-latitudes (> 45 degree), and with and for
+shows results for all matchups, high-latitudes (poleward of 45$^\circ$), and with and for
 mixed and frozen precipitation.
  }\label{fig:ocean_rain}
 \end{figure}
@@ -673,16 +805,12 @@ mixed and frozen precipitation.
 
 \subsection{Precipitation Climatology}
 
-The above validation results show that GPROF-IR (GMI, 3) configuration is close
-to GPROF-IR (GMI, 5) in terms of accuracy. Since it only needs observations from
-two additional timesteps rather than the four required for the GPROF-IR (GMI, 5)
-configuration, it can be more applied more flexibly and is therefore chosen as
-the recommended operational configuration for the GPROF-IR retrieval. Below we
-therefore characterize global precipitation climatologies of the GPROF-IR (GMI,
-3) configuration derived from one year of retrievals from the year 2022. To
-ensure homogeneous sampling across the datasets, we extract precipitation
-estimates from GPROF-IR, ERA5, and GPCP matching the sampling of GPROF V08 GMI
-estimates.
+ Below we characterize global precipitation climatologies of the
+GPROF-IR (GMI, 3) configuration derived from from the year 2022 to corresponding
+estimates from principal precipitation datasets. To reduce diffences due to
+different spatiotemporal sampling of the datasets, we extract precipitation
+estimates from GPROF-IR, ERA5, and GPCP matching the observations of GPROF V08
+GMI retrievals.
 
 Figure~\ref{fig:zonal_means} shows zonal means from the GPROF-IR (GMI, 3)
 retrieval compared to corresponding estimates from GPROF V08 GMI, ERA5 and GPCP.
@@ -692,17 +820,17 @@ subtropics but start to diverge at higher latitudes. Over northern hemisphere
 oceans, the GPROF V08 GMI, GPROF-IR and ERA5 means show close agreement while
 the GPCP estimates are notably higher. Over the southern hemisphere ocean, the
 GPROF V08 GMI and GPROF-IR estimates lie between the ERA5 and GPCP estimates at
-around 40 degree but fall below the ERA5 estimates poleward of 50 degree. Over
+around 40$^\circ$ S but fall below the ERA5 estimates poleward of 50$^\circ$ S. Over
 land, the discrepancies between the datasets are larger. Both GPCP and ERA5 are
 about 20\% higher over tropical land. Over northern hemisphere land, the GPROF V08,
 GPROF-IR, and GPCP estimates agree well while ERA5 yields slightly higher
 average precipitation rates. Over southern hemisphere land, the differences are
 much larger with GPCP being substantially lower than GPROF V08 and GPROF-IR and
-ERA5 being substantially higher. However, these differences may be enhanced due
-to the smaller sample size due to lower land coverage at these latitudes.
+ERA5 being substantially higher. However, these differences may be enhanced by
+the smaller sample size due to lower land coverage at these latitudes.
 
 \begin{figure}[h]
- \centerline{\includegraphics[width=37pc]{figures/figure11.pdf}}
+ \centerline{\includegraphics[width=37pc]{figures/figure13.pdf}}
  \caption{
     Zonal mean precipitation from GPROF V08, GPROF-IR, ERA5 and GPCP for 2022. Panel
     (a) displays the means for precipitation over oceans; panel (b) the means for
@@ -710,605 +838,181 @@ to the smaller sample size due to lower land coverage at these latitudes.
  }\label{fig:zonal_means}
 \end{figure}
 
-\subsubsection*{OceanRAIN Ship-Based Distrometer Measurements}
+Figure~\ref{fig:means} shows the global precipitation distributions for GPROF
+V08, GPROF-IR, ERA5, and GPCP. The distribution of the GPROF-IR estimates
+closely resembles that of GPROF V08. Differences between GPROF V08 and GPROF-IR
+are mostly irregularly distributed and don’t exhibit any notable spatial
+patterns, indicating that they are largely driven by random retrieval errors for
+individual precipitation events. Both ERA5 and GPCP show larger systematic
+differences particularly over land. ERA5 tends to be higher over land than both
+GPROF V08 and GPROF-IR, particularly in the tropics. For GPCP the differences are
+less uniform with regions of both underestimation and overestimation present at
+all latitudes.
 
-\begin{figure}[h]
- \centerline{\includegraphics[width=37pc]{figures/figure04.pdf}}
- \caption{
-OceanRAIN ship tracks and corresponding GMI overpasses. Colored lines indicate
-the trajectories of OceanRAIN vessels during the GMI observation period, and
-black dots denote the collocated satellite overpasses used for validation of the
-GPROF-NN XPR retrieval.
- }\label{fig:ocean_rain_collocs}
-\end{figure}
-
-The OceanRAIN dataset \citep{klepp2018oceanrain} provides shipborne disdrometer
-measurements of precipitation rates over the ocean. For validation of the
-GPROF-NN XPR retrieval, we identify GMI overpasses of the ship locations from
-March 2014, the start of GMI observations, through September 2018, prior to the
-period used to extract GPM--DPR training collocations. Because this interval overlaps
-with the GMI–CPR training dataset, 64 matchups coinciding with CloudSat overpasses
-were excluded from the validation dataset.
-
-Figure~\ref{fig:ocean_rain_collocs} shows the ship tracks associated with the OceanRAIN campaigns together
-with the corresponding GMI overpasses. To account for the spatial scale mismatch
-between satellite footprints and the distrometer measurements, the satellite estimates are
-compared with 30-min rolling averages of the disdrometer precipitation rates.
-The matched satellite precipitation is computed by computing the  GMI pixel closest to the ship
-position for each minute in the averaging window and averaging the resulting precipitation estimates.
-
-To eliminate the impact of errors in the validation data, a relative error is calculated using
-
-\begin{align}
-  \text{err} = \frac{|p_\text{retrieved} - p_\text{reference}|}{max(0.5, 0.5 \cdot |p_\text{retrieved} + p_\text{reference}|)}.
-\end{align}
-
-The error is calculated for the GPROF-NN DPR retrieval as well as the
-corresponding GPROF V07 and ERA5 precipitation estimates. Samples where the
-minimum relative error across these three datasets exceeds 1.8 are discarded. In
-total, 26 samples from the 3436 collocations with valid precipitation estimates
-fail to meet this quality criterion. The removed overpasses correspond to
-precipitation events missed by the distrometer as well as cases where the
-distrometer indicates very high precipitation rates not seen in the satellite or
-ERA5 data. The exclusion of these events does not impact the qualitative results
-of the validation.
-
-\subsubsection*{Ground-Based Precipitation Radar Estimates}
-
-\begin{figure}[h]
- \centerline{\includegraphics[width=37pc]{figures/figure05.png}}
- \caption{
-Summary statistics the validation data derived from NOAA’s Multi-Radar
-Multi-Sensor data. Panel (a) shows the radar-quality index quantifying the
-quality of the radar measurements. Panel (b) and (c ) show the mean
-precipitation and precipitation occurrence, respectively.
- }\label{fig:radar_overpasses}
-\end{figure}
-
-To provide additional context for the evaluation of the GPROF-NN XPR retrieval,
-we assess the CPR and DPR reference precipitation estimates using independent
-observations from NOAA’s Multi-Radar Multi-Sensor (MRMS,
-\citet{smith_multi-radar_2016}) product along the U.S. East Coast. For the
-CPR-based estimates, all available overpasses from June 2015 through the end of
-the CloudSat mission are included. Owing to the wider swath of the DPR,
-overpasses from the year 2022 alone provide sufficient sampling for a robust
-comparison.
-
-Because this study focuses on oceanic precipitation, only satellite pixels
-located over the ocean are retained. Since the chance for beam overshoot
-increases with distance from the shore, only MRMS pixels with a radar quality
-index (RQI) exceeding 0.9 are retained, limiting the distance to the closest
-radar to about 100 km. As RQI fields are unavailable for some earlier MRMS
-periods, the mean RQI field from 2022 is used to screen the matched
-observations. Following \citep{pfreundschuh2026benchmark}, the MRMS
-precipitation fields are aggregated to a $0.36^\circ \times 0.36^\circ$ grid and
-collocated with the CloudSat and DPR estimates using nearest-neighbor
-interpolation. Panel (a) of Fig. 5 presents the mean radar quality index (RQI)
-used to filter valid match-ups. Even with a minimum RQI threshold of 0.9, the
-NEXRAD network provides coverage across most of the U.S. East Coast. Panels (b)
-and (c) display the total number of valid precipitation retrievals extracted
-within the validation domain before the RQI mask is applied. Valid CloudSat
-retrievals are largely limited to ascending overpasses due to its restriction to
-daytime-only operation during the validation period. A smaller number of
-descending overpasses are available over the northern portion of the domain
-during summer. In contrast, the substantially wider swath of the DPR results in
-far more frequent observations that are distributed more uniformly across the
-domain.
-
-
-\section{Results}
-\label{sec:results}
-
-Below we present the three principal results from this work: Firstly, we assess
-the accuracy of the GPROF-NN XPR retrieval by comparing it to GPM CMB and
-CloudSat estimates from independent testing periods and a case study from the
-validation period. Following this, we validate the fused GPROF-NN XPR retrieval
-as well as CPR- and DPR-based precipitation estimates against independent
-in-situ precipitation estimates. Finally, we compare global retrieval statistics
-to existing datasets to assess the impact of the expanded reference data on the
-GPROF-NN XPR retrievals.
-
-\subsection{Retrieval Accuracy}
-
-Figure~\ref{fig:test_results} shows scatter plots of reference and retrieved
-precipitation rates for the CPR- and DPR-based outputs of the GPROF-NN XPR
-retrieval. The retrieval reproduces the DPR-based estimates well, achieving low
-bias and mean-squared error and high linear correlation. The accuracy of the
-CPR-based estimates is substantially lower: MSE and correlation coefficient
-indicate lower accuracy that is also reflected in the increased spread of the
-retrieved values. In part, this can be explained by the higher resolution of the
-CPR-based precipitation estimates. The training and testing datasets both use CPR
-estimates at the native resolution (1.6 km), whereas the DPR-based estimates are
-downsampled to the GMI resolution, which is how they are traditionally treated
-in the GPROF framework. The different approach for the CPR-based estimates was
-chosen due to the difficulties of assigning a unique resolution to the GMI
-observations and of matching the one-dimensional CPR data to the
-two-dimensional GMI footprints.
-
-The CPR-based precipitation estimates show fair agreement with the reference
-values from 0.1 to 3--4 mm h$^{-1}$ but struggle to reproduce precipitation estimates
-exceeding that. However, since CloudSat estimates have to be considered very
-uncertain in this range, it is possible that this is – at least in part – due to
-errors in the CPR-based reference data. Additionally, there is a notable bias in
-the CPR-based precipitation estimates of about 13\% which is caused by the
-underestimation of the higher rain rates. Given that precipitation rates
-exceeding 3--4 mm/h account for more than 10 \% of the total precipitation in the
-test data, the bias may be caused by statistical fluctuations and the smaller
-number of testing samples compared to the DPR-based estimates. Furthermore,
-since CloudSat left the A-train in 2018, the precipitation estimates from the
-test data were derived in a different orbital configuration, which can further
-affect bulk precipitation statistics and thus produce biases in the test
-results.
-
-\begin{figure}[h]
- \centerline{\includegraphics[width=37pc]{figures/figure06.pdf}}
- \caption{
-   Scatter plots of reference and retrieved precipitation for the (a) CPR-based
-   and (b) the DPR-based precipitation estimates.
- }\label{fig:test_results}
-\end{figure}
-
-
-\subsection{Case Study}
-
-Figure~\ref{fig:case_study} illustrates an example of the DPR- and CPR-based
-precipitation estimates together with the resulting fused estimate. The case
-study displays a GMI overpass of a Southern Hemisphere mid-latitude cyclone in
-June 2018. A comparison of the CPR-based, DPR-based, and fused XPR precipitation
-fields highlights substantial structural differences among the three products.
-Although the CPR- and DPR-based estimates are generated using the same model,
-they exhibit marked discrepancies. The CPR-based retrieval produces higher
-precipitation intensities and a broader spatial extent of the cyclone’s
-precipitation field. The fused XPR product moderates the elevated precipitation
-rates evident in the CPR-based retrieval while largely preserving its enhanced
-spatial coverage.
-
-Comparison with the reference data along the CloudSat swath shows that the
-GPROF-NN XPR retrieval successfully captures the shallow precipitation occurring
-between 200 and 250 km along the CloudSat track that is missed by both the DPR
-reference estimates and the GPROF-NN DPR retrievals. Generally, the GPROF-NN XPR
-results capture the main precipitation features but do not reproduce the
-small-scale variability present in the radar-based reference estimates. This
-discrepancy is expected because PMW observations have coarser spatial resolution
-and sampling than the radar measurements. At around 50 km and 750 km along the
-swath, the GPROF-NN XPR retrieval indicates precipitation while the CPR-based
-estimates suggest little or no precipitation. However, the CPR radar still
-detects reflectivities extending down to the surface in these regions,
-suggesting that precipitation likely reaches the surface but may be
-overestimated by the PMW retrieval.
-
-
-\begin{figure}[h]
- \centerline{\includegraphics[width=37pc]{figures/figure07.pdf}}
- \caption{
-   Coincident observations of a mid-latitude cyclone by the GPM and CloudSat
-   satellites. The first row of panels displays GMI-based PMW retrievals trained on
-   GPM DPR precipitation (a), on CloudSat CPR precipitation (b), and the fused
-   precipitation field combining the DPR- and CPR-based estimates (c ). Panels (d),
-   (e), and (f) show the retrieved precipitation and the corresponding CloudSat and
-   GPM radar reflectivities along the CloudSat swath.
- }\label{fig:case_study}
-\end{figure}
-
-\subsection{Validation}
-
-The results presented above demonstrate that the GPROF-NN XPR retrieval is able
-to reproduce both CPR- and DPR-based precipitation estimates accurately
-considering the differences in resolution and information content of the PMW
-observations as well as the sensitivity ranges of the two reference datasets.
-However, since neither reference dataset accurately captures precipitation
-accurately across the full spectrum of precipitation intensities, it is
-essential to evaluate the GPROF-NN XPR retrieval against independent
-precipitation measurements to ensure it actually improves the representation of
-precipitation cipitation. Below we validate both the GPROF-NN XPR retrieval as
-well as the reference datasets themselves against independent precipitation
-measurements.
-
-\subsubsection{OceanRAIN}
-
-The GPROF-NN XPR precipitation estimates are evaluated using 3410 OceanRAIN
-overpasses that passed quality control and yielded valid precipitation estimates
-from GPROF V07, ERA5, and GPROF-NN XPR. To provide a more granular assessment,
-we stratify the analysis into three subsets: (1) all overpasses, (2)
-high-latitude cases poleward of 45°, and (3) scenes with a high likelihood of
-mixed or frozen precipitation. The latter classification uses the
-parameterization of \citet{sims2015parameterization} with ERA5-derived wet-bulb
-temperatures. Overpasses with a conditional probability of solid precipitation
-exceeding 50\% are categorized as likely mixed or frozen precipitation events.
-
-\paragraph{Precipitation Detection}
-
-\begin{figure}[h]
- \centerline{\includegraphics[width=37pc]{figures/figure08.pdf}}
- \caption{
-    Precipitation-detection skill evaluated against ship-borne distrometer
-    measurements. Each panel shows precision–recall curves for the GPROF-NN XPR
-    retrieval outputs based on CPR estimates (GPROF-NN CPR), the DPR-based
-    precipitation estimates (GPROF-NN DPR), the fused estimates (GPROF-NN XPR) and
-    the GPROF V07 and ERA5 baselines. c Panels (a) – (c ) show precipitation
-    estimates for all overpasses, overpasses for latitudes poleward of 45°, and for
-    mixed and frozen precipitation, respectively.
- }\label{fig:ocean_rain_detection}
-\end{figure}
-
-We first assess the detection capability of the three GPROF-NN retrievals as
-well as GPROF V07 and ERA5 baselines using precision-recall curves. The
-precision recall curves display the trade off between precision, i.e., the
-probability of a detection being correct, and the recall, i.e., the fraction of
-total precipitation events detected, as the probability threshold used to decide
-whether a pixel is raining or not is varied. The more skillful the detection, the
-closer the curve gets to a precision and recall value of one. All GPROF
-retrievals provide a probability of precipitation representing the estimated
-probability of the corresponding pixel containing precipitation. Since ERA5
-doesn’t provide a dedicated probability field for precipitation occurrence, we
-use the precipitation rate as detection criterion. An overpass is defined to be
-precipitating when the half-hour average distrometer precipitation exceeds 0.01
-mm/h.
-
-Figure~\ref{fig:ocean_rain_detection} displays the precipitation detection
-accuracy for all overpasses, overpasses at high latitudes, and mixed and frozen
-precipitation. Considering all overpasses, the CloudSat-based light
-precipitation and the fused GPROF-NN XPR results yield the highest detection
-accuracy. This is consistent with the CloudSat-based precipitation estimates
-providing higher sensitivity to light precipitation that is missed by the GPM
-DPR reference data. The retrieval based solely on GPM DPR data has slightly
-lower detection skill but remains clearly more sensitive than the GPROF V07 and
-ERA5 baselines.
-
-Somewhat surprisingly, the detection accuracy of the DPR-based estimates exceeds
-that of the CPR-based estimates at mid and high latitudes. This seems to
-indicate that the CPR-based GPROF-NN estimates miss certain precipitation events
-that are detected by the DPR-based estimates but it is not immediately clear for
-which precipitation processes this would occur. The GPROF-NN XPR achieves the
-highest precipitation detection skill exceeding that of both the CPR- and the
-DPR-based retrievals.
-
-Although the results for mixed and frozen precipitation are overall noisier, the
-CPR-based and fused precipitation estimates clearly achieve the best detection
-accuracy. The DPR-based retrieval performs worse and is closely followed by
-ERA5. The GPROF V07 retrieval performs substantially worse with the best
-precision and recall values being about half of the GPROF-NN XPR retrieval.
-
-Table~\ref{tab:detection_metrics} evaluates the detection skill of all
-retrievals that provide a probability of precipitation using a probability
-threshold of 0.5. This evaluation confirms that the GPROF-NN XPR retrieval
-yields the best detection skill across all precipitation regimes. In particular,
-the GPROF-NN XPR retrieval improves the detection skill compared to GPROF-NN DPR
-by 48 \%, 26 \%, and 42 \% for all overpasses, mid and high latitudes
-overpasses, and frozen precipitation, respectively.
-
-
-\begin{table}[t]
-\centering
-\caption{Precipitation detection metrics (POD, FAR, CSI) for different retrieval methods evaluated against shipborne distrometer measurements across precipitation regimes.}
-\label{tab:detection_metrics}
-\begin{tabular}{lccccccccc}
-\toprule
-& \multicolumn{3}{c}{All Overpasses} 
-& \multicolumn{3}{c}{Mid and High Latitudes} 
-& \multicolumn{3}{c}{Frozen Precipitation} \\
-\cmidrule(lr){2-4} \cmidrule(lr){5-7} \cmidrule(lr){8-10}
-Method 
-& POD & FAR & CSI 
-& POD & FAR & CSI 
-& POD & FAR & CSI \\
-\midrule
-GPROF V07    & 0.37 & 0.31 & 0.32 & 0.29 & 0.28 & 0.26 & 0.11 & 0.25 & 0.10 \\
-GPROF-NN DPR & 0.85 & 0.65 & 0.33 & 0.85 & 0.56 & 0.41 & 0.90 & 0.63 & 0.36 \\
-GPROF-NN CPR & 0.44 & 0.23 & 0.39 & 0.45 & 0.23 & 0.40 & 0.66 & 0.35 & 0.49 \\
-GPROF-NN XPR & 0.67 & 0.35 & 0.49 & 0.65 & 0.28 & 0.52 & 0.71 & 0.36 & 0.51 \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\paragraph{Precipitation Estimation}
-
-Figure~\ref{fig:ocean_rain_scatter} assesses the quantitative precipitation
-estimates of the GPROF-NN retrievals with respect to the OceanRAIN reference.
-The GPROF-NN DPR retrieval achieves higher correlation with the OceanRAIN
-measurements than the CPR-based estimates, which exhibit higher spread at both
-low- and high-precipitation rates. To assess the impact of the
-precipitation-rate fusion, panel (c) displays the relative change in the
-symmetric mean percentage error (SMAPE) resulting from the combining of the DPR-
-and CPR-based estimates compared to the DPR baseline. While the merging
-decreases the SMAPE for a significant number of samples ending up close to the
-diagonal, the are a notable amount of samples for which the SMAPE is increased.
-Most of these correspond to the merging leading to an overestimation of the
-precipitation. Since the coloring indicates the increase in the relative error,
-the largest increases in error occur at small reference precipitation rates as
-the relative error is more sensitive in these regimes. For a smaller number of
-red samples below the diagonal, the merging with the CPR estimates erroneously
-reduces the final precipitation rate.
-
-\begin{figure}[h]
- \centerline{\includegraphics[width=37pc]{figures/figure09.pdf}}
- \caption{
- OceanRain measurements and matches GPROF-NN precipitation retrievals. Panels
- (a) – (c) display scatter plots of OceanRAIN reference precipitation and
- corresponding precipitation retrieved from the GPROF-NN DPR, GPROF-NN CPR, and
- GPROF-NN XPR retrievals. Shading in panel (c) indicates the change in the
- Symmetric Mean Percentage Error resulting from the merging of the DPR- and CPR-
- based estimates relative to the GPROF-NN DPR baseline.
- }\label{fig:ocean_rain_scatter}
-\end{figure}
-
-A statistical evaluation of the OceanRAIN overpasses is presented in Fig.~\ref{fig:ocean_rain_stats}.
-Evaluated over all overpasses, both the DPR- and CPR-based estimates are biased
-low. The bias of the DPR-based estimates is around 10 \%, while the DPR-based
-estimates are biased low by 7 \%. Fusing the two estimates leads to a reduction
-in bias to a positive bias of about 1 \%. At mid- and high latitudes, the low
-bias of the DPR estimates is enhanced while the CPR estimates are biased high
-with 16 \%. The fused precipitation estimates are biased low by about 7 \%. For
-frozen precipitation, the bias in the DPR-based estimates increases to 51 \%
-while the CPR-based estimates are low by 20 \%. The bias in the fused GPROF-NN
-XPR precipitation estimates is -20 \%, similar to that of the CPR-based
-estimates. The fusion of the DPR- and CPR- based estimates thus helps to reduce
-systematic underestimation of the DPR-based retrieval. Furthermore, the biases
-are smaller than for the GPROF V07 baseline as well as the ERA5 baseline except
-for frozen precipitation.
-
-In terms of instantaneous retrieval error, the CPR-based estimates have higher
-errors than the DPR-based estimates, particularly at mid to high latitudes. The
-fused estimates dampen these errors to some extent but remain higher or at the
-level of the DPR-based estimates. The GPROF-NN XPR retrieval generally achieves
-lower mean absolute and mean squared error than the ERA5 baseline as well as
-higher correlation. The GPROF V07 baseline has smaller mean squared error and
-higher correlation coefficient for all overpasses and higher correlation for
-frozen precipitation. However, comparing the GPROF estimates to the actual
-DPR-based reference estimates using the 1028 OceanRAIN overpasses with valid
-2BCMB reference precipitation estimates, the GPROF-NN DPR estimates achieve a
-MSE of 0.26 (mm h$^{-1}$)$^2$ and a linear correlation coefficient of 0.84
-compared to 0.32 (mm h$^{-1}$)$^2$ and a linear correlation of 0.8 for the GPROF
-V07 baseline. This indicates that these small accuracy differences are likely
-due to either statistical noise or uncertainties in the validation data.
-
-
-\begin{figure}[h]
- \centerline{\includegraphics[width=37pc]{figures/figure10.pdf}}
- \caption{
-Statistical evaluation of the GPROF-NN and baseline datasets against shipborne
-in-situ measurements from the OceanRAIN dataset. Panels (a) – (d) display bias,
-mean absolute error, mean squared error, and linear correlation coefficient for
-GMI overpasses over the OceanRAIN vessels. Results are reported independently
-for all overpasses (All), overpasses poleward of 45 deg (High Lat) and
-overpasses with an estimated fraction of frozen precipitation exceeding 50
-\% (Frozen).
- }\label{fig:ocean_rain_stats}
-\end{figure}
-
-\subsubsection{Validation of CPR- and DPR-based Precipitation Estimates}
-
-The validation against OceanRAIN shipborne distrometer measurements has shown
-that the fusion of CPR- and DPR-based precipitation estimates improves the
-precipitation detection skill and reduces systematic underestimation but
-increases the random errors in the precipitation estimates. Assessment of the
-CPR- and DPR-based estimates showed that these higher errors originate from the
-CPR-based estimates, which exhibit significantly larger random errors than the
-DPR-based estimates. Below we therefore examine CPR- and DPR-based precipitation
-errors against independent estimates from ground-based radars.
-
-Figure~\ref{fig:mrms_scatter} displays scatter plots of the CPR- and DPR-based
-precipitation estimates compared to ground-based radar measurements of the US
-East Coast. The CPR-based precipitation estimates exhibit very high scatter
-compared to the MRMS-based measurements particularly for MRMS precipitation
-rates up to 1 mm/h. This is surprising given that the CloudSat estimates are
-expected to be more reliable at low precipitation rates, where the radar
-observations are less affected by attenuation. Nonetheless, the estimates
-achieve a correlation of 0.4 likely due to the better agreement for MRMS
-precipitation rates exceeding 1 mm h$^{-1}$. The scatter plot indicates a
-distinct bi-modal behavior for MRMS precipitation rates less than 1 mm h$^{-1}$,
-where the retrieval tends to either heavly overestimate or underestimate the
-MRMS precipitation rates but almost never matches them.
-
-The DPR-based estimates show better agreement with the MRMS estimates. Although
-the DPR estimates strongly overestimate any MRMS estimates below 0.5 mm/h, which
-is a result of the limited sensitivity of the DPR, the show very good agreement
-with the MRMS-based estimates for precipitation rates from 5--10 mm/h, after
-which they start to exhibit a tendency towards under-estimation.
-
-\begin{figure}[h]
- \centerline{\includegraphics[width=37pc]{figures/figure11.pdf}}
- \caption{
-Scatter plots of precipitation estimates from the (a) CPR- and (b) DPR-based
-reference precipitation estimates compared to independent estimates from
-ground-based radar.
- }\label{fig:mrms_scatter}
-\end{figure}
-
-To illustrate the likely failure mode of the CPR precipitation retrievals,
-Figure~\ref{fig:mrms_case_study} shows one of the CPR overpasses from the
-validation dataset. While the MRMS precipitation measurements indicate spatially
-homogeneous precipitation with precipitation rates around 1 mm h$^{-1}$ throughout most of the
-scene, the CPR-based precipitation oscillate between 0.01 and 10 mm h$^{-1}$.
-The principal change in CPR radar reflectivities during the transition from 10
-mm h$^{-1}$ to 0.01 mm h$^{-1}$ is a strong increase in the surface backscatter
-while the above-surface reflectivities remain relatively similar.
- While limited, this evidence suggest that the errors in the CPR-based
- precipitation estimates may be related to the interpretation of the surface
- backscatter. Specifically in this scene where the surface backscatter
- increases, the estimate of the path integrated attenuation and column
- integrated precipitation water content decrease. One plausible source of
- uncertainty in this case is a localized change in the surface roughness not
- accounted for in the CloudSat algorithms.
-
-
-\begin{figure}[h]
- \centerline{\includegraphics[width=37pc]{figures/figure12.pdf}}
- \caption{
-   Comparison of collocated CPR and MRMS precipitation estimates. Panel (a)
-   displays the MRMS precipitation field and the ground track of the CPR
-   observations. Panels (b) and (c) display the MRMS and CPR precipiation rates
-   and the CPR radar reflectivity along the track, respectively.
- }\label{fig:mrms_case_study}
-\end{figure}
-
-The comparison against the independent precipitation estimates from MRMS
-indicates that the CPR-based precipitation estimates do not yield an accurate
-quantitative estimate of light precipitation. In particular, the retrieval seems
-to exhibit a tendency to either strongly underestimate or strongly overestimate
-MRMS precipitation rates within 0.1 to 1 mm/h. As shown in
-Fig.~\ref{fig:cpr_cmb_scatter}, this behavior is also observed when the CPR
-estimates are directly compared to the DPR-based estimates. Although one would
-expect the CPR and DPR estimates to agree across precipitation estimates from
-0.5 to 1 mm h$^{-1}$, the scatter plot exhibits similar bi-modal behavior as for
-the validation against MRMS. The results in Fig. 11 further show that the
-inconsistency between the estimates is largely caused by the precipitation
-estimates from the 2C-Rain-Profile product. The snowfall estimates from the
-2C-Snow-Profile product show generally better consistency particularly for
-estimates around 1 mm h$^{-1}$.
-
-\begin{figure}[h]
- \centerline{\includegraphics[width=37pc]{figures/figure13.pdf}}
- \caption{
-Scatter plot comparing CPR- and DPR- based precipitation estimates. Panel (a)
-compares the DPR-based precipitation estimates from the GPM 2BCMB product with
-estimates of the CloudSat 2C-Rain-Profile product. Panel (b) compares the GPM
-estimates with snowfall estimates from the 2C-Snow-Profile product.
- }\label{fig:cpr_cmb_scatter}
-\end{figure}
-
-\subsection{Global Precipitation Distributions}
-
-Although the fusing of CPR- and DPR- based precipitation estimates does not
-increase the accuracy of individual precipitation estimates, it has shown clear
-improvements in precipitation detection and reductions of climatological biases
-compared to shipborne distrometer measurements. This indicates that the fused
-GPROF-NN XPR estimates better represent light and frozen precipitation. Below we
-characterize the impact of fusing CPR and DPR-based precipitation estimates on
-global precipitation distributions.
-
-Figure~\ref{fig:zonal_means_all} displays the zonal distribution of ocean
-precipitation as retrieved by the GPROF-NN CPR, DPR, and XPR retrievals. The
-CPR-based retrieval yields higher precipitation rates poleward of the
-mid-latitude storm tracks but severely underestimates precipitation in the
-tropics and extratropics compared to the estimates derived from DPR-based
-retrieval. The fused estimates track the GPM DPR-based estimates within
-30$^\circ$ S -- 30$^\circ$ N. Poleward of that, the GPROF-NN XPR estimates
-mostly fall between the DPR and CPR based estimates approximating the CPR-based
-estimates at high latitudes. The increased precipitation at mid and high
-latitudes moves the zonal profiles of the GPROF-NN XPR retrieval closer to those
-of of GPCP but remains lower than them at all latitudes. The GPROF-NN XPR
-retrieval is slightly higher than ERA5 in the storm tracks but falls below it at
-high latitudes.
+The GPROF-IR (GMI, 3) retrievals largely reproduce the distribution of GPROF
+V08. Since the GPROF-IR retrieval is designed to provide background
+precipitation estimates to be merged with GPROF V08 retrievals, the
+climatological consistency constitutes an additional desirable feature of the
+GPROF-IR retrievals.
 
 \begin{figure}[h]
  \centerline{\includegraphics[width=37pc]{figures/figure14.pdf}}
  \caption{
-Zonal means of oceanic precipitation estimates. The figure compares estimates
-from the CPR-based (GPROF-NN CPR), the DPR-based (GPROF-NN DPR), and from the
-fused precipitation estimates (GPROF-NN XPR) to reference estimates from GPROF V07, ERA5,
-and GPCP.
- }\label{fig:zonal_means_all}
-\end{figure}
-
-The corresponding global precipitation distributions are displayed in
-Fig.~\ref{fig:global_means_all}. Compared to the DPR-based retrievals, the
-CPR-based estimates add more than 2 mm per day over the storm tracks and
-high-latitude oceans. The fused XPR estimates add precipitation over the storm
-tracks and high latitudes albeit less than the GPROF-NN CPR retrieval alone.
-The fused precipitation estimates slightly decrease precipitation over the
-Indian ocean and West Pacific but increase it over the eastern Pacific.
-
-ERA5 exhibits higher precipitation rates than the DPR-based reference retrievals
-almost everywhere. However, pockets of decreasing precipitation are visible in
-the Indian Ocean and the West Pacific roughly matching areas of decreasing
-precipitation in the GPROF-NN XPR results. GPCP precipitation rates are also
-globally higher with scattered regions of decreasing precipitation.
-
-Although the increased precipitation in the GPROF-NN XPR retrieval brings the
-zonal means closer to those of ERA5 and GPCP, the analysis of the global
-distribution highlights important differences between where the precipiation is
-added. In contrast to ERA5 and GPCP, the GPROF-NN XPR retrieval adds
-precipitation over the subtropical oceans off the west coasts of North and South
-America, Africa, and Australia. In addition to this, the GPROF-NN XPR slightly
-decreases precipitation over the tropical oceans east of the Americas. This may
-indicate that the fused retrieval is in fact sensitive to precipitation regimes
-that may be missed by the other datasets. However, given the inaccuracies in the
-CPR-based reference estimates, further validation is  required to confirm
-this.
-
-
-\begin{figure}[hp]
- \centerline{\includegraphics[width=37pc]{figures/figure15.png}}
- \caption{
-Global distributions of mean daily precipitation accumulations from the DPR-based estimates (GPROF-NN DPR), the CPR-based estimates (GPROF-NN CPR), and the merged estimates (GPROF-NN XPR) and the ERA5 and GPCP datasets.
- }\label{fig:global_means_all}
+Global precipitation distributions from GPROF V08, GPROF-IR, ERA5, and GPCP for
+2022. The first column displays the average precipitation distributions; the
+second column displays the difference with respect to GPROF V08.
+ }\label{fig:means}
 \end{figure}
 
 \section{Summary and Conclusions}
-\label{sec:summary}
+\label{sec:summary_and_conclusions}
 
-This work presents GPROF-NN XPR, a novel precipitation retrieval designed to
-overcome limitations of current global PMW precipitation estimates imposed by
-the shortcomings of the precipitation estimates used as targets for empirical
-retrieval algorithms. GPROF-NN XPR retrieval combines dedicated estimates of
-light precipitation based on reference data from the CloudSat CPR with
-moderate-to-light precipitation estimates based on reference data from the GPM
-DPR. A simple fusion scheme is proposed to combine the two precipitation
-estimates into a single fused precipitation estimate. This novel approach
-extends previous efforts aiming to use CloudSat precipitation rates to retrieve
-light and frozen precipitation from PMW sensors \citep{rahimi2025advancing,
-  eastman2019}.
+This study developed and validated GPROF-IR — a novel single-channel IR
+precipitation estimation algorithm to provide background precipitation estimates
+for merged satellite precipitation datasets. The retrieval leverages a CNN and
+temporally resolved input observations allowing it to considerably improve upon
+conventional IR precipitation retrievals. Despite using only single-channel IR
+observations, GPROF-IR achieves higher accuracy than IMERG precipitation
+estimates during GMI overpasses over CONUS and continental Europe. Given the
+limited information content of single-channel IR observations, the ability of
+GPROF-IR to provide more accurate precipitation estimates than conventional PMW
+retrievals for continental precipitation constitutes a major advancement for
+global precipitation monitoring. It should be noted here that this holds only
+conventional PMW retrieval since the GPROF-NN algorithm that will be used for the next
+version of operational GPM products will notably improve the retrieval errors and
+effective resolution of the GPM PMW retrievals. Validation against independent precipitation
+estimates over the Korean peninsula and the global oceans showed that the
+accuracy approaches but remains below that of conventional PMW retrievals over
+water surfaces and precipitation regimes dominated by shallower precipitation
+systems. Nonetheless, the GPROF-IR retrieval yields notable improvements over
+conventional IR retrievals, substantially reducing mean absolute and mean square
+error and doubling the linear correlation coefficient across a variety of
+precipitation regimes.
 
-Validation of the fused GPROF-NN XPR precipitation estimates shows improved
-precipitation detection and a reduction of the systematic underestimation that
-affects conventional retrievals, particularly at high latitudes and for frozen
-precipitation. These results indicate that GMI PMW observations can help bridge
-the current sensitivity gap between radar-based precipitation measurements from
-the CloudSat and GPM missions. By providing estimates that better represent
-preciptiation across regimes, the GPROF-NN XPR retrieval has the potential to
-improve global precipitation datasets. In particular, it may reduce the need for
-climatological corrections that suppress monthly and interannual variability.
+Our experiments show that using GPROF V08 GMI instead of 2BCMB as
+reference data leads to higher accuracy when compared to independent
+precipitation estimates. While the GPROF V08 GMI retrieval uses the 2BCMB
+dataset as reference data, it augments these precipitation estimates with
+MRMS-based estimates over snow and light-precipitation estimates from the
+GPROF-NN XPR \citep{pfreundschuh_xpr_2026} retrieval over ocean. Since the improved
+accuracy is observed even in the evaluation against continental precipitation
+where snow tends to have a small impact, the most likely explanation for the
+observed improvements is the wider coverage and larger amount of the GPROF V08
+GMI based reference data. Additionally, the validation against shipborne
+distrometer measurements has shown that the GPROF V08-based retrieval reduces systematic
+underestimation of high latitude as well as mixed and frozen precipitation
+compared to the retrieval based on 2BCMB estimates. This is further evidence
+that the GPROF-NN XPR retrieval is effective at improving the representation of
+light and frozen precipitation in global satellite-based precipitation
+estimates.
 
-The improved represntation of precipitation across precipitation regimes in the
-PMW retrievals, also demonstrates that there is potential to improve synergistic
-active–passive precipitation retrievals using GMI observations. The DPR-based
-estimates used here are derived from the GPM 2BCMB product, which already
-combines radar and GMI observations. However, the current algorithm only
-retrieves precipitation where the radar observations indicate hydrometeor
-backscatter, which limits the retrievals to the low sensitivity of the DPR.
-The results presented here demonstrate that GMI observations alone can identify
-precipitation that is not detected by the DPR, suggesting that current combined
-radar--radiometer retrievals do not yet fully exploit the synergistic potential
-of the active and passive microwave observations provided by the GPM satellite.
+Furthermore, the our results show moderate but robust accuracy improvements when
+temporal information is integrated into the retrieval. Analysis of retrieval
+results of Typhoon Khanun suggests that the temporal information helps to
+constrain precipitation features with weak radiometric signatures in cloud-top
+temperatures such as those embedded into large-scale precipitation features.
 
-Although the fused precipitation estimates improve detection and reduce
-climatological biases, the fusion increases random retrieval errors compared to
-the DPR-based estimates. Validation of the CPR-based precipitation estimates
-from the 2C-Rain-Profile product provide more sensitive but generally less
-accurate quantitative precipitation estimates than the DPR-based reference. The
-comparison against both ground-based radar and against DPR show large spread at
-light precipitation rates with a bi-modal tendency to either strongly
-underestimate or overestimate precipitation by an order of magnitude. The
-bi-modal behavior of the 2C-Rain-Profile was already noted in the first
-publication describing the retrieval \citep{lebsock_2011} but apparently has not
-been further investigated since. Since 2C-Rain-Profile estimates are used to
-calibrate principal global precipitation products including IMERG and GPCP
-\citep{behrangi_new_2020}, there is a need to revisit these precipitation
-estimates and ensure consistency with other radar-based precipitation estimates
-across the shared range of sensitivity.
+\subsubsection{Consequences for ML Precipitation Retrieval Design}
+
+GPROF-IR is the first single-channel IR retrieval that is able to
+rival conventional PMW retrievals over continental landmasses
+and demonstrate substantial, robust improvements over
+conventional IR precipitation estimates. To achieve this, GPROF-IR
+uses the IR observations at their native resolution since fine-scale cloud-top
+structures may provide information on the underlying cloud and precipitation processes.
+The positive impact of maximizing the resolution of the
+input observations has also been found in \citet{pfreundschuh_improved_2022}.
+Additionally, GPROF-IR leverages temporal information in the input data. This is
+achieved by stacking sequential IR observations and letting the CNN model
+learn to extract the temporal information that can help constrain surface
+precipitation estimates. During training we noted that the multi-step retrieval do
+not achieve the same accuracy as single-step retrievals when trained from scratch
+with the same compute budget. We therefore initialized the multi-step
+retrievals using the weights of the trained single-step retrieval. The
+inclusion of  additional time steps only increases the number of input channels,
+so that only the weight matrix of the first convolutional operation in the network
+increases in size. All other parameters can be directly copied from the single or
+three-step configurations. While we have not tested whether the multi-step
+models trained from scratch eventually reach the performance, the pre-training
+strategy was found to be an effective way of training multi-timestep satellite retrievals.
+
+A notable difference to previously proposed IR-only precipitation retrievals is
+that GPROF-IR uses reference data from DPR and GMI. Due to their empirical
+nature, neural-network-based retrievals are unlikely to yield more accurate precipitation
+estimates than the data they are trained on -- although they may potentially reduce random
+errors in the reference data. Since  retrievals will generally be
+less accurate than there reference data, using ERA5 or IMERG is only a
+defensible design choice for applications requiring data that is more recent than three months
+after which the more accurate ERA5 and IMERG final product will be available.
+Additionally, GPROF-IR uses a training dataset that is relatively large compared
+to other ML IR precipitation retrievals. The comparison of the GMI- and
+DPR-based GPROF-IR configurations indicates that the increased amount of
+training data may be responsible for the improved accuracy of the GMI-based
+configuration. If this is the case, then further increasing the size of the training data
+could be an opportunity to further improve IR-based precipitation retrievals.
+
+The implementation of GPROF-IR primarily focused on maximizing the amount and
+quality of the training data as well as the information content of the retrieval
+input data. We have neither exhaustively tried to opitmize the model
+architecture or the loss function but limited experimentation suggested that
+they have a minor impact on the accuracy.
+GPROF-IR is trained using a quantile loss function but the prinicipal output is
+the mean of the posterior CDF, which is approximated using the 32 predicted
+quantiles. The posterior mean will approximate the output that would be obtained
+were the model trained using a MSE loss. However, the probabilistic nature of
+the outputs has the advantage of simultaneously allowing for the calculation of
+exceedance probabilities for precipitation thresholds that can be chosen during
+inference time. As evident from the analysis of the precipitation detection
+skill (Fig.~\ref{fig:precipitation_detection} and
+Fig.~\ref{fig:precision_recall}), the exceedance thresholds yield better skill
+for both precipitation detection and heavy precipitation detection. This
+highlights the importance taking into the account the statistical
+characteristics of different retrieval outputs when they are used to investigate
+different aspects of precipitation. The posterior mean will tend to be unbiased
+and minize the mean-squared-error but will yield suboptimal skill in detecting
+the exceedance of specific precipitation rates. The posterior mean is provided
+as the main retrieval output of GPROF-IR since we consider bias-freedom of the
+precipitation climatology a desireable property for precipitation retrievals .
+However, our results highlight that applications requiring different properties
+(such as the representation of extremes) may benefit from using other
+estimators. Future datasets should thus consider whether providing additional statistics
+ could better meet user needs.
+
+\subsubsection{Impact}
+
+Because of its capability to greatly improve the accuracy of IR-only
+precipitation estimates, the GPROF-IR retrieval will be used to produce IR
+precipitation estimates for next version of IMERG -- IMERG V08.
+Figure~\ref{fig:evolution_2} revisits the convective precipitation system from
+Fig.~\ref{fig:evolution} showing the GPROF-IR (GMI, 3) retrieval results
+together with the GPROV V08 PMW precipitation estimates that will be used in
+IMERG V08 and the current IR precipitation estimates from IMERG V07. In contrast
+to the current IR precipitation estimates, GPROF-IR produces precipitation
+estimates that are consistent with PMW precipitation estimates. This suggests
+that the GPROF-IR retrieval will not only help to improve the overall accuracy
+of IMERG V08 but also improve the representation of the temporal evolution of
+precipitation systems.
 
 
-Despite teh uncertainties in the quantitative precipitation estimates from the
-CPR, our extensive validation of the GPROF-NN XPR estimates against direct,
-shipborne measuremens demonstrates the benefits of using CPR-based precipitation
-estimates to improve precipitation detection and the climatological
-representation of high-latitude and frozen precipitation. The GPROF-NN XPR
-retrieval will therefore be used as an auxiliary retrieval to add light
-precipitation to the DPR-based reference data that will be used to train the
-retrieval algorithms for the next operational version of the GPM PMW retrieval
-algorithms.
 
-While the GPROF-NN XPR retrieval constitutes an additional step towards improved
-global estimates of oceanic precipitation from the GPM mission, this work also
-highlights remaining challenges of current global precipitation products. Since
-CPR- and DPR-based are currently used in combination to calibrate global
-precipitation products, it should be ensured that these products are consistent
-across the shared sensitivity range of CPR and DPR. Moreover, our results
-indicate that current synergistic active–passive precipitation retrievals
-underutilize passive observations and could likely be improved to overcome
-limitations of current active sensors.
+\begin{figure}[h]
+ \centerline{\includegraphics[width=37pc]{figures/figure15.pdf}}
+ \caption{
+Detailed view of the convective precipitation cells during the SSMIS overpass
+occurring at 15:00 UTC shown in Fig. 2. Panel (a) shows the estimates from GPROF
+V08, which will be used in IMERG V08; panel (b) shows the IMERG V07 IR
+precipitation estimate; panel (c ) shows the corresponding estimates of the
+GPROF-IR (GMI, 3) retrieval that will be used to produce precipitation estimates
+for IMERG V08
+ }\label{fig:evolution_2}
+\end{figure}
 
+In addition to being operationally used for IMERG V08, all GPROF-IR retrievals
+are openly available to the scientific community \citep{pfreundschuh_gprofir_2026}. Since the retrieval uses only
+IR observations as input, it can be easily run on the CPC gridded IR
+observations. The quasi-global availability and high accuracy of the retrieval
+also provides a strong baseline for the development of future precipitation
+retrievals.
 
 \clearpage
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -1318,23 +1022,24 @@ limitations of current active sensors.
 
 The work of SP and CDK was supported by NASA grant 80NSSC22K0604.
 
-The authors thank Mathew Lebsock for valuable feedback on the validation of the
-CloudSat precipitation estimates.
+This study uses modified Copernicus Climate Change Service information. Neither the European Commission nor ECMWF is responsible for any use that may be made of the Copernicus information or data it contains.
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% DATA AVAILABILITY STATEMENT
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% 
-%
+
 \datastatement
 
-The 2BCMB can be downloaded from \citet{cmb_data}.
 
-The CloudSat 2C-Precip-Column, 2C-Rain-Column, and 2C-Snow-Column data are available from \citet{cloudsat_data}.
+The NOAA CPC 4-km gridded IR observations are available from \citet{ncep_cpc_mergir_v1}.
 
-The OceanRAIN dataset is available from \citet{ocean_rain_data}.
+The GPM 2BCMB data are available  from \citet{cmb_data}.
 
-The MRMS data can be downloaded from \citet{mrms_data}.
+The SatRain dataset is available from \citet{satrain_dataset}.
+
+The OceanRAIN data are available from \citet{ocean_rain_data}.
+
+The ERA5 data are available from \citet{c3s_era5_single_levels}.
+
+The GPCP data are available from \citet{gpcp_v33_precip}.
+
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
