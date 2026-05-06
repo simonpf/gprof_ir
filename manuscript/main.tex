@@ -335,15 +335,15 @@ and following its standardized evaluation protocol, we ensure that the
 validation results of the GPROF-IR retrievals are reproducible and directly
 comparable to other algorithms.
 
-The testing split of the dataset comprises one year of GMI overpasses over
-CONUS and Korea as well as two years of overpasses over the Wegener gauge
-network in Austria. The CONUS testing data is derived from gauge-corrected
-precipitation estimates from the NOAA Multi-Radar Multi-Sensor (MRMS,
-\citep{smith_multi-radar_2016}) products; the Korea data is derived from
-gauge-corrected precipitation estimates provided by the Korean Meteorological
-Agency \citep{ryu_radar_2025}. To accommodate for the testing resolution of 0.036 degree used by the
-SatRain dataset, all GPROF-IR results are interpolated to the SatRain grid using
-bi-linear interpolation.
+The analysis presented here uses the GMI-based testing data, which comprises one
+year of GMI overpasses over CONUS and Korea as well as two years of overpasses
+over the Wegener gauge network in Austria. The CONUS testing data is derived
+from gauge-corrected precipitation estimates from the NOAA Multi-Radar
+Multi-Sensor (MRMS, \citep{smith_multi-radar_2016}) products; the Korea data is
+derived from gauge-corrected precipitation estimates provided by the Korean
+Meteorological Agency \citep{ryu_radar_2025}. To accommodate for the testing
+resolution of 0.036 degree used by the SatRain dataset, all GPROF-IR results are
+interpolated to the SatRain grid using bi-linear interpolation.
 
 
 \subsubsection{OceanRAIN Shipborne Distrometer Measurements}
@@ -416,7 +416,11 @@ of retrieval output. However, the probabilistic nature of the network also
 allows the calculation of other statistical properties of the posterior
 distribution such as exceedance probability for arbitrary precipitation rates,
 which we will use later to assess the precipitation detection capabilities of
-the model.
+the model. All retrievals have been trained for 140 epochs using the AdamW
+optimizer \citep{loshchilov_decoupled_2019} lwith a learning rate of
+$5 \cdot 10^{4}$, a cosine-annealing learning rate schedule, and warm restarts
+\citep{loshchilov2016sgdr} after 20 and 60 epochs.
+
 
 \begin{figure}[h]
  \centerline{\includegraphics[width=37pc]{figures/figure03.pdf}}
@@ -873,110 +877,119 @@ for merged satellite precipitation datasets. The retrieval leverages a CNN and
 temporally resolved input observations allowing it to considerably improve upon
 conventional IR precipitation retrievals. Despite using only single-channel IR
 observations, GPROF-IR achieves higher accuracy than IMERG precipitation
-estimates during GMI overpasses over CONUS and continental Europe. Given the
-limited information content of single-channel IR observations, the ability of
-GPROF-IR to provide more accurate precipitation estimates than conventional PMW
-retrievals for continental precipitation constitutes a major advancement for
-global precipitation monitoring. It should be noted here that this holds only
-conventional PMW retrieval since the GPROF-NN algorithm that will be used for the next
-version of operational GPM products will notably improve the retrieval errors and
-effective resolution of the GPM PMW retrievals. Validation against independent precipitation
-estimates over the Korean peninsula and the global oceans showed that the
-accuracy approaches but remains below that of conventional PMW retrievals over
-water surfaces and precipitation regimes dominated by shallower precipitation
-systems. Nonetheless, the GPROF-IR retrieval yields notable improvements over
-conventional IR retrievals, substantially reducing mean absolute and mean square
-error and doubling the linear correlation coefficient across a variety of
-precipitation regimes.
+estimates during GMI overpasses over CONUS and continental Europe. Since
+geostationary IR observations are available around much of the globe every 30
+min, the ability of GPROF-IR to provide more accurate precipitation estimates
+than the much less frequent PMW obverpasses constitutes a major advancement for global
+precipitation monitoring. However, it should also that the next operational
+version of GPROF -- GPROF V08 -- will use a similar CNN-based retrieval that has
+been shown to markedly improve PMW retrievals as well.
 
-Our experiments show that using GPROF V08 GMI instead of 2BCMB as
-reference data leads to higher accuracy when compared to independent
-precipitation estimates. While the GPROF V08 GMI retrieval uses the 2BCMB
-dataset as reference data, it augments these precipitation estimates with
-MRMS-based estimates over snow and light-precipitation estimates from the
-GPROF-NN XPR \citep{pfreundschuh_xpr_2026} retrieval over ocean. Since the improved
-accuracy is observed even in the evaluation against continental precipitation
-where snow tends to have a small impact, the most likely explanation for the
-observed improvements is the wider coverage and larger amount of the GPROF V08
-GMI based reference data. Additionally, the validation against shipborne
-distrometer measurements has shown that the GPROF V08-based retrieval reduces systematic
-underestimation of high latitude as well as mixed and frozen precipitation
-compared to the retrieval based on 2BCMB estimates. This is further evidence
-that the GPROF-NN XPR retrieval is effective at improving the representation of
-light and frozen precipitation in global satellite-based precipitation
-estimates.
+Validation against independent precipitation estimates over the Korean peninsula
+and the global oceans showed that the accuracy approaches but remains below that
+of conventional PMW retrievals over water surfaces and precipitation regimes
+dominated by shallower precipitation systems. Nonetheless, the GPROF-IR yields
+notable improvements over conventional IR retrievals,  reducing
+mean absolute and mean square error and doubling the linear correlation
+coefficient across a variety of precipitation regimes.
 
-Furthermore, the our results show moderate but robust accuracy improvements when
-temporal information is integrated into the retrieval. Analysis of retrieval
-results of Typhoon Khanun suggests that the temporal information helps to
-constrain precipitation features with weak radiometric signatures in cloud-top
-temperatures such as those embedded into large-scale precipitation features.
 
 \subsubsection{Consequences for ML Precipitation Retrieval Design}
 
-GPROF-IR is the first single-channel IR retrieval that is able to
-rival conventional PMW retrievals over continental landmasses
-and demonstrate substantial, robust improvements over
-conventional IR precipitation estimates. To achieve this, GPROF-IR
-uses the IR observations at their native resolution since fine-scale cloud-top
-structures may provide information on the underlying cloud and precipitation processes.
-The positive impact of maximizing the resolution of the
-input observations has also been found in \citet{pfreundschuh_improved_2022}.
-Additionally, GPROF-IR leverages temporal information in the input data. This is
-achieved by stacking sequential IR observations and letting the CNN model
-learn to extract the temporal information that can help constrain surface
-precipitation estimates. During training we noted that the multi-step retrieval do
-not achieve the same accuracy as single-step retrievals when trained from scratch
-with the same compute budget. We therefore initialized the multi-step
-retrievals using the weights of the trained single-step retrieval. The
-inclusion of  additional time steps only increases the number of input channels,
-so that only the weight matrix of the first convolutional operation in the network
-increases in size. All other parameters can be directly copied from the single or
-three-step configurations. While we have not tested whether the multi-step
-models trained from scratch eventually reach the performance, the pre-training
-strategy was found to be an effective way of training multi-timestep satellite retrievals.
+GPROF-IR is the first global single-channel IR retrieval to achieve higher
+accuracy than IMERG PMW precipitation estimates over continental landmasses,
+establishing a new state of the art for this class of methods. This is
+corroborated by comparisons with IR-based precipitation products from the
+PERSIANN family \citep{hong_ccs_2004, nguyen2020persiann, nguyen_punet_2026} shown in
+Fig.~\ref{fig:evaluation_persiann}. Since PERSIANN products
+are only available as hourly accumulations, their accuracy will be slightly
+reduced  when evaluated against the SatRain reference data, which is
+based on 2- and 10-minute radar observations over CONUS and Korea and
+half-hourly accumulations over Austria. Nevertheless, the assessment on the
+SatRain data reproduces relative accuracy of the PDIRNow, PU-Net, and IMERG
+retrievals reported in \citet{nguyen_punet_2026} indicating that the assessment
+in Fig.~\ref{fig:evaluation_persiann} remains representative.
+\begin{figure}[h]
+ \centerline{\includegraphics[width=37pc]{figures/figure15.pdf}}
+ \caption{
+   Comparison of GPROF-IR and PERSIANN IR precipitation products using the SatRain
+   benchmark dataset.
+ }\label{fig:evaluation_persiann}
+\end{figure}
 
-A notable difference to previously proposed IR-only precipitation retrievals is
-that GPROF-IR uses reference data from DPR and GMI. Due to their empirical
-nature, neural-network-based retrievals are unlikely to yield more accurate precipitation
-estimates than the data they are trained on -- although they may potentially reduce random
-errors in the reference data. Since  retrievals will generally be
-less accurate than there reference data, using ERA5 or IMERG is only a
-defensible design choice for applications requiring data that is more recent than three months
-after which the more accurate ERA5 and IMERG final product will be available.
-Additionally, GPROF-IR uses a training dataset that is relatively large compared
-to other ML IR precipitation retrievals. The comparison of the GMI- and
-DPR-based GPROF-IR configurations indicates that the increased amount of
-training data may be responsible for the improved accuracy of the GMI-based
-configuration. If this is the case, then further increasing the size of the training data
-could be an opportunity to further improve IR-based precipitation retrievals.
+The results confirm that the PU-Net algorithm achieves robust improvements over
+the PERSIANN CCS and PDIRNow algorithms. GPROF-IR yields even more accurate
+retrievals with improvements compared to PU-Net being of the order of or larger
+than those between PU-Net and PDIRNow. Additionally, GPROF-IR markedly
+outperforms ERA5 precipitation estimates, which highlights the value of IR-based
+retrievals not only for real-time global precipitation estimation but also for
+improving the consistency and fidelity of the historical precipitation record.
+Notably, these gains are achieved despite GPROF-IR using the same
+satellite observations and relying on the same underlying machine-learning
+architecture as PU-Net, indicating that retrieval design choices beyond the
+model architecture itself play a critical role in determining overall
+performance.
 
-The implementation of GPROF-IR primarily focused on maximizing the amount and
-quality of the training data as well as the information content of the retrieval
-input data. We have neither exhaustively tried to opitmize the model
-architecture or the loss function but limited experimentation suggested that
-they have a minor impact on the accuracy.
-GPROF-IR is trained using a quantile loss function but the prinicipal output is
-the mean of the posterior CDF, which is approximated using the 32 predicted
-quantiles. The posterior mean will approximate the output that would be obtained
-were the model trained using a MSE loss. However, the probabilistic nature of
-the outputs has the advantage of simultaneously allowing for the calculation of
-exceedance probabilities for precipitation thresholds that can be chosen during
-inference time. As evident from the analysis of the precipitation detection
-skill (Fig.~\ref{fig:precipitation_detection} and
-Fig.~\ref{fig:precision_recall}), the exceedance thresholds yield better skill
-for both precipitation detection and heavy precipitation detection. This
-highlights the importance taking into the account the statistical
-characteristics of different retrieval outputs when they are used to investigate
-different aspects of precipitation. The posterior mean will tend to be unbiased
-and minize the mean-squared-error but will yield suboptimal skill in detecting
-the exceedance of specific precipitation rates. The posterior mean is provided
-as the main retrieval output of GPROF-IR since we consider bias-freedom of the
-precipitation climatology a desireable property for precipitation retrievals .
-However, our results highlight that applications requiring different properties
-(such as the representation of extremes) may benefit from using other
-estimators. Future datasets should thus consider whether providing additional statistics
- could better meet user needs.
+The design of GPROF-IR aims to maximize (1) the amount and quality of the
+training data and (2) the information content of the retrieval input data. A
+preqrequisite for allowing GPROF-IR to yield higher-accuracy estimates than
+IMERG is that GPROF-IR uses reference data from the GPM combined DPR and GMI
+retrievals and GPROF V08 GMI, both of which yield more accurate precipitation
+estimates than IMERG. Due to their empirical nature, neural-network-based
+retrievals are unlikely to yield more accurate precipitation estimates than the
+data they are trained on (although they may potentially reduce random errors
+in the reference data). Therefore, retrievals trained on IMERG (or ERA5)
+precipitation will remain limited by the accuracy of the reference data.
+
+Furthermore, GPROF-IR uses a single, large training dataset comprising all
+available reference precipitation estimates from 2015 to and including 2018.
+Compared to the training data used by GPROF-NN, which uses only reference
+estimates from the central part of the DPR swath, the training data for the
+CMB-based GPROF-IR configuration is about 8 times larger and 16 times larger for
+the GPROF-V08-GMI-based configuration. The comparison of the GMI- and DPR-based
+GPROF-IR configurations indicates that the increased amount of training data may
+be responsible for the improved accuracy of the GMI-based configuration. The
+accuracy of IR precipitation retrievals may thus further benefit from using
+training datasets covering more than four years of data.
+
+To maximize the information content in the retrieval input data, GPROF-IR uses
+the gridded IR observations at their native resolution aiming to conserve
+small-scale cloud texture information in the observations. A positive impact of maximizing the
+resolution of the input observations has already been found in
+\citet{pfreundschuh_improved_2022}. Additionally, GPROF-IR leverages temporal
+information in the input data. This is achieved by stacking sequential IR
+observations and letting the CNN model learn to extract the temporal information
+that can help constrain surface precipitation estimates. During training we
+noted that the multi-step retrievals do not achieve the same accuracy as
+single-step retrievals when trained from scratch with the same compute budget.
+We therefore initialized the multi-step retrievals using the weights of the
+trained single-step retrieval. The inclusion of additional time steps only
+increases the number of input channels, so that only the weight matrix of the
+first convolutional operation in the network increases in size. All other
+parameters can be directly copied from the single or three-step configurations.
+While we have not tested whether the multi-step models trained from scratch
+eventually reach the single-step performance, the pre-training strategy was found to be an
+effective way of training multi-timestep satellite retrievals.
+
+We have neither exhaustively tried to opitmize the model architecture or the
+loss function but limited experimentation suggested that they have a minor
+impact on the accuracy. GPROF-IR is trained to predict 32 quantiles of the
+posterior distribution of the observed precipitation using a quantile loss
+function. The prinicipal reported output of the retrieval is the mean of the
+posterior cumulative distribution function, which is approximated using the 32
+predicted quantiles. The reported posterior mean is similar to the output that
+would be obtained from a model trained using a mean-squared-error loss.
+
+The probabilistic nature of GPROF-IR allows calculating different statistics of
+the posterior distribution such as exceedance probabilities for arbitrary
+precipitation thresholds. As evident from the analysis of the precipitation
+detection skill (Fig.~\ref{fig:precipitation_detection} and
+Fig.~\ref{fig:precision_recall}), the exceedance thresholds yield more accurate
+results for precipitation detection and heavy-precipitation detection than using
+the reported posterior-mean precipitation rates. This highlights the importance
+of considering the statistical characteristics of different retrieval outputs
+when used to assess different aspects of precipitation.
+
 
 \subsubsection{Impact}
 
@@ -984,19 +997,17 @@ Because of its capability to greatly improve the accuracy of IR-only
 precipitation estimates, the GPROF-IR retrieval will be used to produce IR
 precipitation estimates for next version of IMERG -- IMERG V08.
 Figure~\ref{fig:evolution_2} revisits the convective precipitation system from
-Fig.~\ref{fig:evolution} showing the GPROF-IR (GMI, 3) retrieval results
-together with the GPROV V08 PMW precipitation estimates that will be used in
-IMERG V08 and the current IR precipitation estimates from IMERG V07. In contrast
-to the current IR precipitation estimates, GPROF-IR produces precipitation
-estimates that are consistent with PMW precipitation estimates. This suggests
-that the GPROF-IR retrieval will not only help to improve the overall accuracy
-of IMERG V08 but also improve the representation of the temporal evolution of
-precipitation systems.
-
-
+Fig.~\ref{fig:evolution} displaying the GPROV V08 PMW precipitation estimates
+that will be used in IMERG V08, the current IR precipitation estimates from
+IMERG V07, and the new GPROF-IR (GMI, 3) retrieval results. In contrast to the
+IMERG V07 IR precipitation estimates, GPROF-IR produces a precipitation field
+that exhibits consistent precipitation structures compared to the PMW estimates.
+This suggests that the GPROF-IR retrieval will not only help to improve the
+overall accuracy of IMERG V08 but also improve the representation of the
+temporal evolution of precipitation systems.
 
 \begin{figure}[h]
- \centerline{\includegraphics[width=37pc]{figures/figure15.pdf}}
+ \centerline{\includegraphics[width=37pc]{figures/figure16.pdf}}
  \caption{
 Detailed view of the convective precipitation cells during the SSMIS overpass
 occurring at 15:00 UTC shown in Fig. 2. Panel (a) shows the estimates from GPROF
@@ -1008,11 +1019,11 @@ for IMERG V08
 \end{figure}
 
 In addition to being operationally used for IMERG V08, all GPROF-IR retrievals
-are openly available to the scientific community \citep{pfreundschuh_gprofir_2026}. Since the retrieval uses only
-IR observations as input, it can be easily run on the CPC gridded IR
-observations. The quasi-global availability and high accuracy of the retrieval
-also provides a strong baseline for the development of future precipitation
-retrievals.
+and their implementation are openly available to the scientific community
+\citep{pfreundschuh_gprofir_2026}. Since the retrieval uses only IR observations
+as input, it can be easily run using only the CPC gridded IR observations. The
+quasi-global availability and high accuracy of the retrieval also provides a
+strong baseline for the development of future precipitation retrievals.
 
 \clearpage
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
