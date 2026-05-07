@@ -132,6 +132,7 @@ class GPROFIRRetrieval:
         merged_ir_path: Path,
         variant: str = "gmi",
         n_steps: int = 3,
+        include_probabilities: bool = False,
         device: str = "cpu",
         dtype: torch.dtype = torch.bfloat16,
     ):
@@ -139,6 +140,8 @@ class GPROFIRRetrieval:
         Args:
             variant: The variant of the GPROF-IR retrieval ('gmi' or 'cmb').
             n_steps: The number of input timesteps (1, 3, or 5)
+            include_probabilities: Set to True to use probabilistic output for precipitation
+                detection.
             device: The device to use for inference
             dtype: The dtype to use for inference.
         """
@@ -154,6 +157,7 @@ class GPROFIRRetrieval:
 
         self.variant = variant
         self.n_steps = n_steps
+        self.include_probabilities = include_probabilities
         self.device = device
         self.dtype = dtype
 
@@ -188,7 +192,8 @@ class GPROFIRRetrieval:
                     variant=self.variant,
                     n_steps=self.n_steps,
                     roi=(lon_min, lat_min, lon_max, lat_max),
-                    progress=False
+                    progress=False,
+                    include_probabilities=self.include_probabilities
                 )[0]
             )
         results = xr.concat(results, dim="time")
@@ -198,8 +203,26 @@ class GPROFIRRetrieval:
             longitude=retrieval_input.longitude,
             time=time,
         )
-        return results[["surface_precip"]]
 
+        if "probabiliti_of_precip" in results:
+            results["precip_flag"] = 0.5 < results.probability_of_precip
+            results["probability_of_precip"] = results.probability_of_precip
+            results["heavy_precip_flag"] = 0.5 < results.probability_of_heavy_precip
+            results["probability_of_heavy_precip"] = results.probability_of_heavy_precip
+        else:
+            results["precip_flag"] = 0.1 < results.surface_precip
+            results["probability_of_precip"] = results.surface_precip
+            results["heavy_precip_flag"] = 10.0 < results.surface_precip
+            results["probability_of_heavy_precip"] = results.surface_precip
+
+        output_vars = [
+            "surface_precip",
+            "precip_flag",
+            "heavy_precip_flag",
+            "probability_of_precip",
+            "probability_of_heavy_precip"
+        ]
+        return results[output_vars]
 
 
 def load_imerg_precip(path: Path, bounds: Tuple[float, float, float, float]) -> xr.Dataset:

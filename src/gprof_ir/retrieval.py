@@ -22,6 +22,7 @@ from huggingface_hub import hf_hub_download
 import numpy as np
 from pytorch_retrieve.architectures import RetrievalModel
 from pytorch_retrieve.inference import InferenceConfig, load_model, run_inference
+from pytorch_retrieve.config import RetrievalOutputConfig
 from scipy.ndimage import binary_closing
 import torch
 import toml
@@ -117,7 +118,8 @@ def download_model(variant: str = "gmi", n_steps: Optional[int] = None) -> Path:
 
 def load_inference_config(
         model: RetrievalModel,
-        device: "str"
+        device: "str",
+        include_probabilities: bool = False
 ) -> InferenceConfig:
     """
     Load inference config for GPROF-IR model.
@@ -133,6 +135,20 @@ def load_inference_config(
     )
     if device == "cpu":
         inference_config.batch_size = 1
+
+    if include_probabilities:
+        output = inference_config.retrieval_output["surface_precip"]
+        output["probability_of_precip"] = RetrievalOutputConfig(
+            model.output_config["surface_precip"],
+            "ExceedanceProbability",
+            {"threshold": 1e-1}
+        )
+        output["probability_of_heavy_precip"] = RetrievalOutputConfig(
+            model.output_config["surface_precip"],
+            "ExceedanceProbability",
+            {"threshold": 1e1}
+        )
+
     return inference_config
 
 
@@ -418,6 +434,13 @@ class MultiInputLoader:
             surface_precip.flatten(order='C').tofile(output_path)
             return output_path
 
+        if "probability_of_precip" in results:
+            pop = results["probability_of_precip"].data.numpy()[:, 0]
+            pop_heavy = results["probability_of_heavy_precip"].data.numpy()[:, 0]
+        else:
+            pop = None
+            pop_heavy = None
+
         results = xr.Dataset({
             "latitude": (("latitude",), aux["latitude"]),
             "longitude": (("longitude",), aux["longitude"]),
@@ -425,6 +448,10 @@ class MultiInputLoader:
             "surface_precip": (("time", "latitude", "longitude"), surface_precip),
             "quality_flag": (("time", "latitude", "longitude"), quality)
         })
+
+        if pop is not None:
+            results["probability_of_precip"] = (("time", "latitude", "longitude"), pop)
+            results["probability_of_heavy_precip"] = (("time", "latitude", "longitude"), pop_heavy)
 
         results.surface_precip.encoding = {"dtype": "float32", "zlib": True}
         results.quality_flag.encoding = {"zlib": True}
@@ -450,7 +477,8 @@ def run_retrieval_multi(
         end_time: Optional[np.datetime64] = None,
         n_threads: int = 8,
         roi: Optional[Tuple[float, float, float, float]] = None,
-        progress: bool = True
+        progress: bool = True,
+        include_probabilities: bool = False
 ) -> List[xr.Dataset]:
     """
     Run GPROF-IR retrieval on given input data.
@@ -468,6 +496,7 @@ def run_retrieval_multi(
         roi: An optional region of interest defined as a tuple (lon_min, lat_min, lon_max, lat_max) to
             run the retrieval on a regional subset of data.
         progress: Whether or not to display a progress bar.
+        include_probabilities: Set to 'True' to include precipitation probabilities in output.
 
     Return:
         A list of xarray.Datasets containing the results for all input files.
@@ -507,7 +536,11 @@ def run_retrieval_multi(
     n_steps = model.encoder.stages[0].projection.weight.shape[1]
 
     # Inference config
-    inference_config = load_inference_config(model, device)
+    inference_config = load_inference_config(
+        model,
+        device,
+        include_probabilities=include_probabilities
+    )
 
     # Input loader
     input_path = Path(input_path)
@@ -613,6 +646,10 @@ def run_retrieval_multi(
     default=8,
     help="The number of threads to use for CPU processing."
 )
+@click.option(
+    "--probabilities",
+    is_flag=True
+)
 def cli_multi(
         input_path: Path,
         output_path: Optional[Path] = None,
@@ -623,7 +660,8 @@ def cli_multi(
         output_format: str = "netcdf",
         start_time: Optional[np.datetime64] = None,
         end_time: Optional[np.datetime64] = None,
-        n_threads: int = 8
+        n_threads: int = 8,
+        probabilities: bool = False
 ) -> None:
     """
     Run GPROF IR retrieval on INPUT_PATH.
@@ -662,7 +700,8 @@ def cli_multi(
         output_format=output_format,
         start_time=start_time,
         end_time=end_time,
-        n_threads=n_threads
+        n_threads=n_threads,
+        include_probabilities=probabilities
     )
     # Return error code.
     if isinstance(res, int):
@@ -807,6 +846,13 @@ class SingleInputLoader:
             surface_precip.flatten(order='C').tofile(output_path)
             return output_path
 
+        if "probability_of_precip" in results:
+            pop = results["probability_of_precip"].data.numpy()[:, 0]
+            pop_heavy = results["probability_of_heavy_precip"].data.numpy()[:, 0]
+        else:
+            pop = None
+            pop_heavy = None
+
         results = xr.Dataset({
             "latitude": (("latitude",), aux["latitude"]),
             "longitude": (("longitude",), aux["longitude"]),
@@ -814,6 +860,10 @@ class SingleInputLoader:
             "surface_precip": (("time", "latitude", "longitude"), surface_precip),
             "quality_flag": (("time", "latitude", "longitude"), quality)
         })
+
+        if pop is not None:
+            results["probability_of_precip"] = (("time", "latitude", "longitude"), pop)
+            results["probability_of_heavy_precip"] = (("time", "latitude", "longitude"), pop)
 
         results.surface_precip.encoding = {"dtype": "float32", "zlib": True}
         results.quality_flag.encoding = {"zlib": True}
