@@ -119,9 +119,6 @@ class InputLoader:
         return inpt, aux, f"gprof_ir_{date_str}.nc"
 
 
-
-
-
 class GPROFIRRetrieval:
     """
     Helper class implementing a SatRain retrieval callback for the GPROF IR retrievals.
@@ -132,7 +129,7 @@ class GPROFIRRetrieval:
         merged_ir_path: Path,
         variant: str = "gmi",
         n_steps: int = 3,
-        include_probabilities: bool = False,
+        include_probabilities: bool = True,
         device: str = "cpu",
         dtype: torch.dtype = torch.bfloat16,
     ):
@@ -204,7 +201,7 @@ class GPROFIRRetrieval:
             time=time,
         )
 
-        if "probabiliti_of_precip" in results:
+        if "probability_of_precip" in results:
             results["precip_flag"] = 0.5 < results.probability_of_precip
             results["probability_of_precip"] = results.probability_of_precip
             results["heavy_precip_flag"] = 0.5 < results.probability_of_heavy_precip
