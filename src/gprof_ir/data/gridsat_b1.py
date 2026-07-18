@@ -26,16 +26,6 @@ from chimp.utils import get_date
 LOGGER = logging.getLogger(__name__)
 
 
-CPCIR_GRID = create_area_def(
-    "cpcir_area",
-    {"proj": "longlat", "datum": "WGS84"},
-    area_extent=[-180.0, -60.0, 180.0, 60.0],
-    resolution= (0.03637833468067906, 0.036385688295936934),
-    units="degrees",
-    description="CPCIR grid",
-)
-
-
 class GridSatB1(InputDataset):
     """
     Represents input data derived from merged IR data.
@@ -44,14 +34,14 @@ class GridSatB1(InputDataset):
             self,
             stack: Optional[int] = None
     ):
-        name = "merged_ir"
+        name = "gridsat_b1"
         if stack is not None:
-            name = f"merged_ir_{stack}"
+            name = f"gridsat_b1_{stack}"
         InputDataset.__init__(
             self,
             name,
-            "merged_ir",
-            4,
+            "gridsat_b1",
+            8,
             "tbs",
             n_dim=2,
             spatial_dims=("latitude", "longitude")
@@ -120,9 +110,10 @@ class GridSatB1(InputDataset):
         output_folder = Path(output_folder) / self.name
         output_folder.mkdir(exist_ok=True)
 
-        data = gridsat_b1.open(path).rename({"Tb": "tbs"})
-        for time_ind  in range(data.time.size):
+        with xr.open_dataset(path) as data:
+            data = data[["irwin_cdr"]].rename({"irwin_cdr": "tbs"}).compute()
 
+        for time_ind  in range(data.time.size):
             data_t = data[{"time": time_ind}]
             encoding = {
                 "tbs": {
@@ -189,5 +180,6 @@ class GridSatB1(InputDataset):
 
 
 gridsat = GridSatB1()
-gridsat_3 = GridSatB1(stack=3)
-gridsat_5 = GridSatB1(stack=5)
+gridsat_4 = GridSatB1(stack=4)
+gridsat_8 = GridSatB1(stack=8)
+gridsat_16 = GridSatB1(stack=16)
