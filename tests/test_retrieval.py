@@ -400,3 +400,83 @@ def test_run_binary_output(
     assert (tmp_path / "gprof_ir_2020010100.bin").exists()
     sp_flat = np.fromfile(tmp_path / "gprof_ir_2020010100.bin", dtype="f4")
     assert np.isclose(sp_ref.flatten(), sp_flat, atol=1e-3).all()
+
+
+@pytest.mark.parametrize("n_steps", ["3"])
+def test_run_with_probabilities(
+        retrieval_input_data,
+        tmp_path,
+        n_steps
+):
+    """
+    Test running the GPROF IR retrieval.
+    """
+    args = [
+        "gprof_ir",
+        "run",
+        str(retrieval_input_data / "merg_2020010100_4km-pixel.nc4"),
+        "--output_path",
+        str(tmp_path),
+        "--variant",
+        "gmi",
+        "--n_steps",
+        n_steps,
+        "--probabilities"
+    ]
+    subprocess.run(args)
+    assert (tmp_path / "gprof_ir_2020010100.nc").exists()
+    with xr.open_dataset(tmp_path / "gprof_ir_2020010100.nc") as results:
+        assert "algorithm" in results.attrs
+        assert results.attrs["variant"] == "gmi"
+        assert results.attrs["n_steps"] == int(n_steps)
+
+        assert "probability_of_precip" in results
+        assert "probability_of_heavy_precip" in results
+
+
+@pytest.mark.parametrize("variant", ["gmi"])
+def test_run_binary_output(
+        retrieval_input_data,
+        tmp_path,
+        variant
+):
+    """
+    Test running the GPROF IR retrieval.
+    """
+    args = [
+        "gprof_ir",
+        "run",
+        str(retrieval_input_data / "merg_2020010100_4km-pixel.nc4"),
+        "--output_path",
+        str(tmp_path),
+        "--variant",
+        variant,
+        "--n_steps",
+        "1"
+    ]
+    subprocess.run(args)
+    assert (tmp_path / "gprof_ir_2020010100.nc").exists()
+    with xr.open_dataset(tmp_path / "gprof_ir_2020010100.nc") as results:
+        assert "algorithm" in results.attrs
+        assert results.attrs["variant"] == variant
+        assert results.attrs["n_steps"] == 1
+        sp_ref = results.surface_precip.data
+    sp_ref = np.roll(np.flip(sp_ref, 1), sp_ref.shape[-1] // 2, -1)
+
+    args = [
+        "gprof_ir",
+        "run",
+        str(retrieval_input_data / "merg_2020010100_4km-pixel.nc4"),
+        "--output_path",
+        str(tmp_path),
+        "--variant",
+        variant,
+        "--n_steps",
+        "1",
+        "--output_format",
+        "binary"
+    ]
+    subprocess.run(args)
+    assert (tmp_path / "gprof_ir_2020010100.bin").exists()
+    sp_flat = np.fromfile(tmp_path / "gprof_ir_2020010100.bin", dtype="f4")
+    assert np.isclose(sp_ref.flatten(), sp_flat, atol=1e-3).all()

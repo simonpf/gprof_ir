@@ -1,6 +1,6 @@
-# GPROF IR
+# GPROF-IR
 
-**GPROF IR** (`gprof_ir`) is a Python package for retrieving precipitation from geostationary **infrared window-channel observations**. It produces background precipitation fields for **merged precipitation products**, complementing passive-microwave retrievals from the GPROF-NN framework.
+**GPROF-IR** (`gprof_ir`) is a Python package for retrieving precipitation from geostationary **infrared window-channel observations**. It produces background precipitation fields for **merged precipitation products**, complementing passive-microwave retrievals from the GPROF-NN framework.
 
 ## Installation
 

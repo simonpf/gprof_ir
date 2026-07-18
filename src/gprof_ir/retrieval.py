@@ -7,7 +7,9 @@ Provides functionality to run the GPROF IR retrieval on GPM merged IR input file
 from datetime import datetime, timedelta
 from importlib.metadata import version
 import gzip
+from functools import cached_property
 import logging
+from math import ceil
 import os
 from pathlib import Path
 import sys
@@ -20,6 +22,7 @@ from huggingface_hub import hf_hub_download
 import numpy as np
 from pytorch_retrieve.architectures import RetrievalModel
 from pytorch_retrieve.inference import InferenceConfig, load_model, run_inference
+from pytorch_retrieve.config import RetrievalOutputConfig
 from scipy.ndimage import binary_closing
 import torch
 import toml
@@ -31,13 +34,29 @@ from . import config
 LOGGER = logging.getLogger(__name__)
 
 
-def load_input_data(path: Path, input_format: Optional[str] = None) -> np.ndarray:
+def load_input_data(
+        path: Path,
+        input_format: Optional[str] = None,
+        slices: Optional[Dict[str, slice]] = None
+) -> xr.Dataset:
     """
     Load brightness temperatures from NetCDF file.
+
+    Args:
+        path: A path object pointing to the file from which to load the input data.
+        input_format: A string specifying the input format. This is required if the file suffix
+            does not uniquely identify the input format.
+        slices: An optional dictionary to subset loading of input data from xarray.Dataset.
+
+    Return:
+        An xarray.Dataset containing the input observations.
     """
     path = Path(path)
     if path.suffix.startswith(".nc") or input_format == "netcdf":
-        return xr.load_dataset(path)
+        if slices is None:
+            return xr.load_dataset(path)
+        with xr.open_dataset(path) as data:
+            return data[slices].load()
     elif path.suffix in ["", ".bin"] or input_format == "binary":
         with open(path, "rb") as f:
             buf = f.read()
@@ -71,6 +90,10 @@ def load_input_data(path: Path, input_format: Optional[str] = None) -> np.ndarra
         data["time"] = (("time",), times)
     except ValueError:
         pass
+
+    if slices is not None:
+        data = data[slices]
+
     return data
 
 
@@ -95,7 +118,8 @@ def download_model(variant: str = "gmi", n_steps: Optional[int] = None) -> Path:
 
 def load_inference_config(
         model: RetrievalModel,
-        device: "str"
+        device: "str",
+        include_probabilities: bool = False
 ) -> InferenceConfig:
     """
     Load inference config for GPROF-IR model.
@@ -111,6 +135,20 @@ def load_inference_config(
     )
     if device == "cpu":
         inference_config.batch_size = 1
+
+    if include_probabilities:
+        output = inference_config.retrieval_output["surface_precip"]
+        output["probability_of_precip"] = RetrievalOutputConfig(
+            model.output_config["surface_precip"],
+            "ExceedanceProbability",
+            {"threshold": 1e-1}
+        )
+        output["probability_of_heavy_precip"] = RetrievalOutputConfig(
+            model.output_config["surface_precip"],
+            "ExceedanceProbability",
+            {"threshold": 1e1}
+        )
+
     return inference_config
 
 
@@ -129,10 +167,22 @@ def load_ir_tbs_multi_step(
         path,
         n_steps: int,
         previous_files: Optional[List[Path]] = None,
-        input_format: Optional[str] = None
-) -> Path:
+        input_format: Optional[str] = None,
+        slices: Optional[Dict[str, slice]] = None
+) -> xr.Dataset:
     """
     Get path pointing to merged-IR file before the current input file.
+
+    Args:
+        path: A path object pointing to the file containing the two time steps for which to retrieve
+            precipitation.
+        n_steps: The number of previous input steps to load.
+        input_fomat: The input format if it cannot be inferred from the file suffix.
+        slices: Optional slices to limit the data loaded from the input files.
+
+    Return:
+        An xarray.Dataset containing the loaded input data required to run the GPROF-IR retrieval with
+        n_steps timesteps.
     """
     if previous_files is None:
         files = [path]
@@ -153,7 +203,7 @@ def load_ir_tbs_multi_step(
     for path in files:
         path = Path(path)
         if path.exists():
-            data.append(load_input_data(path, input_format=input_format))
+            data.append(load_input_data(path, input_format=input_format, slices=slices))
         else:
             LOGGER.warning(
                 "Tried loading previous IR data from %s but the file doesn't exist.",
@@ -180,7 +230,8 @@ class MultiInputLoader:
             end_time: Optional[np.datetime64] = None,
             input_format: Optional[str] = None,
             output_format: str = "netcdf",
-            output_path: Optional[Path] = None
+            output_path: Optional[Path] = None,
+            roi: Optional[Tuple[float, float, float, float]] = None
     ):
         """
         Args:
@@ -240,6 +291,42 @@ class MultiInputLoader:
         else:
             output_path = Path(output_path)
         self.output_path = output_path
+        self.roi = roi
+
+    @cached_property
+    def roi_slices(self):
+        """
+        A dictionary containing the slices to subset the loaded input data to the given ROI.
+        """
+        if self.roi is None:
+            return {
+                "lat": slice(0, None),
+                "lon": slice(0, None)
+            }
+        lons = np.linspace(-179.98181, 179.98181, 9896)
+        lats = np.linspace(-59.981808, 59.981808, 3298)
+        lon_min, lat_min, lon_max, lat_max = self.roi
+        lat_mask = (lat_min <= lats) * (lats <= lat_max)
+        lon_mask = (lon_min <= lons) * (lons <= lon_max)
+        lat_inds = np.where(lat_mask)[0]
+        lon_inds = np.where(lon_mask)[0]
+
+        height = lat_inds[-1] - lat_inds[0]
+        height = max(256 * ceil(height / 256), 512)
+        lat_c = int(0.5 * (lat_inds[0] + lat_inds[-1]))
+        lat_start = min(max(lat_c - height // 2, 0), lats.size - height)
+        lat_end = lat_start + height
+
+        width = lon_inds[-1] - lon_inds[0]
+        width = max(256 * ceil(width / 256), 512)
+        lon_c = int(0.5 * (lon_inds[0] + lon_inds[-1]))
+        lon_start = min(max(lon_c - width // 2, 0), lons.size - width)
+        lon_end = lon_start + width
+
+        return {
+            "lat": slice(lat_start, lat_end),
+            "lon": slice(lon_start, lon_end),
+        }
 
     def __len__(self) -> int:
         return len(self.files)
@@ -256,12 +343,21 @@ class MultiInputLoader:
             ``inpt``, auxiliary data in ``aux``, and the input filename.
         """
         if self.n_steps == 1:
-            input_data = load_input_data(path, input_format=self.input_format)
+            input_data = load_input_data(
+                path,
+                input_format=self.input_format,
+                slices=self.roi_slices
+            )
             inpt = {
                 "merged_ir": torch.tensor(input_data.Tb.data[:, None])
             }
         else:
-            input_data = load_ir_tbs_multi_step(path, n_steps=self.n_steps, input_format=self.input_format)
+            input_data = load_ir_tbs_multi_step(
+                path,
+                n_steps=self.n_steps,
+                input_format=self.input_format,
+                slices=self.roi_slices
+            )
             n_times = input_data.time.size
             inpt = {
                 "merged_ir": torch.stack([
@@ -338,6 +434,13 @@ class MultiInputLoader:
             surface_precip.flatten(order='C').tofile(output_path)
             return output_path
 
+        if "probability_of_precip" in results:
+            pop = results["probability_of_precip"].data.numpy()[:, 0]
+            pop_heavy = results["probability_of_heavy_precip"].data.numpy()[:, 0]
+        else:
+            pop = None
+            pop_heavy = None
+
         results = xr.Dataset({
             "latitude": (("latitude",), aux["latitude"]),
             "longitude": (("longitude",), aux["longitude"]),
@@ -345,6 +448,10 @@ class MultiInputLoader:
             "surface_precip": (("time", "latitude", "longitude"), surface_precip),
             "quality_flag": (("time", "latitude", "longitude"), quality)
         })
+
+        if pop is not None:
+            results["probability_of_precip"] = (("time", "latitude", "longitude"), pop)
+            results["probability_of_heavy_precip"] = (("time", "latitude", "longitude"), pop_heavy)
 
         results.surface_precip.encoding = {"dtype": "float32", "zlib": True}
         results.quality_flag.encoding = {"zlib": True}
@@ -369,6 +476,9 @@ def run_retrieval_multi(
         start_time: Optional[np.datetime64] = None,
         end_time: Optional[np.datetime64] = None,
         n_threads: int = 8,
+        roi: Optional[Tuple[float, float, float, float]] = None,
+        progress: bool = True,
+        include_probabilities: bool = False
 ) -> List[xr.Dataset]:
     """
     Run GPROF-IR retrieval on given input data.
@@ -383,6 +493,10 @@ def run_retrieval_multi(
         start_time: Optional start time to limit the input files being considered.
         end_time: Optional end time to limit the input files being considered.
         n_threads: The number of threads to use for CPU processing.
+        roi: An optional region of interest defined as a tuple (lon_min, lat_min, lon_max, lat_max) to
+            run the retrieval on a regional subset of data.
+        progress: Whether or not to display a progress bar.
+        include_probabilities: Set to 'True' to include precipitation probabilities in output.
 
     Return:
         A list of xarray.Datasets containing the results for all input files.
@@ -422,7 +536,11 @@ def run_retrieval_multi(
     n_steps = model.encoder.stages[0].projection.weight.shape[1]
 
     # Inference config
-    inference_config = load_inference_config(model, device)
+    inference_config = load_inference_config(
+        model,
+        device,
+        include_probabilities=include_probabilities
+    )
 
     # Input loader
     input_path = Path(input_path)
@@ -432,6 +550,7 @@ def run_retrieval_multi(
             input_path
         )
         sys.exit(1)
+
     input_loader = MultiInputLoader(
         input_path,
         n_steps=n_steps,
@@ -440,7 +559,8 @@ def run_retrieval_multi(
         input_format=input_format,
         output_path=output_path,
         start_time=start_time,
-        end_time=end_time
+        end_time=end_time,
+        roi=roi
     )
     torch.set_num_threads(n_threads)
     return run_inference(
@@ -450,6 +570,7 @@ def run_retrieval_multi(
         output_path=output_path,
         device=device,
         dtype=dtype,
+        progress=progress
     )
 
 @click.argument("input_path", type=str)
@@ -525,6 +646,10 @@ def run_retrieval_multi(
     default=8,
     help="The number of threads to use for CPU processing."
 )
+@click.option(
+    "--probabilities",
+    is_flag=True
+)
 def cli_multi(
         input_path: Path,
         output_path: Optional[Path] = None,
@@ -535,7 +660,8 @@ def cli_multi(
         output_format: str = "netcdf",
         start_time: Optional[np.datetime64] = None,
         end_time: Optional[np.datetime64] = None,
-        n_threads: int = 8
+        n_threads: int = 8,
+        probabilities: bool = False
 ) -> None:
     """
     Run GPROF IR retrieval on INPUT_PATH.
@@ -574,7 +700,8 @@ def cli_multi(
         output_format=output_format,
         start_time=start_time,
         end_time=end_time,
-        n_threads=n_threads
+        n_threads=n_threads,
+        include_probabilities=probabilities
     )
     # Return error code.
     if isinstance(res, int):
@@ -719,6 +846,13 @@ class SingleInputLoader:
             surface_precip.flatten(order='C').tofile(output_path)
             return output_path
 
+        if "probability_of_precip" in results:
+            pop = results["probability_of_precip"].data.numpy()[:, 0]
+            pop_heavy = results["probability_of_heavy_precip"].data.numpy()[:, 0]
+        else:
+            pop = None
+            pop_heavy = None
+
         results = xr.Dataset({
             "latitude": (("latitude",), aux["latitude"]),
             "longitude": (("longitude",), aux["longitude"]),
@@ -726,6 +860,10 @@ class SingleInputLoader:
             "surface_precip": (("time", "latitude", "longitude"), surface_precip),
             "quality_flag": (("time", "latitude", "longitude"), quality)
         })
+
+        if pop is not None:
+            results["probability_of_precip"] = (("time", "latitude", "longitude"), pop)
+            results["probability_of_heavy_precip"] = (("time", "latitude", "longitude"), pop)
 
         results.surface_precip.encoding = {"dtype": "float32", "zlib": True}
         results.quality_flag.encoding = {"zlib": True}
