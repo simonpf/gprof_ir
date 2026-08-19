@@ -64,7 +64,6 @@ class MergedIR(InputDataset):
     @property
     def n_channels(self) -> int:
         return 1
-
     def find_files(
             self,
             start_time: np.datetime64,
