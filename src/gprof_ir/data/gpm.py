@@ -34,7 +34,7 @@ from chimp.data.input import InputDataset
 from chimp.data.resample import resample_and_split
 from chimp.data.reference import ReferenceDataset, RetrievalTarget
 from chimp.data.mrms import MRMS_PRECIP_RATE
-from chimp.data.utils import get_output_filename, records_to_paths
+from chimp.data.utils import get_output_filename, records_to_paths, scale_slices
 from chimp.utils import get_date
 
 
@@ -45,9 +45,12 @@ class GPMCMB(ReferenceDataset):
     """
     Represents retrieval reference data derived from GPM combined radar-radiometer retrievals.
     """
-    def __init__(self):
+    def __init__(
+            self,
+            include_coordinates: bool = False
+    ):
         super().__init__(
-            "gpm",
+            "gpm" if not include_coordinates else "gpm_coords",
             8,
             [RetrievalTarget("surface_precip")],
             quality_index=None,
@@ -55,6 +58,7 @@ class GPMCMB(ReferenceDataset):
         self.products = [l2b_gpm_cmb, l2b_gpm_cmb_b, l2b_gpm_cmb_c]
         self.spatial_dims = ("latitude", "longitude")
         self.scale = 8
+        self.include_coordinates = include_coordinates
 
     def find_files(
             self,
@@ -284,21 +288,155 @@ class GPMCMB(ReferenceDataset):
                 )
                 data.to_netcdf(output_folder / filename, encoding=encoding)
 
+    def load_sample(
+            self,
+            path: Path,
+            crop_size: int,
+            base_scale,
+            slices: Tuple[int, int, int, int],
+            rng: np.random.Generator,
+            rotate: Optional[float] = None,
+            flip: Optional[bool] = None,
+            quality_threshold: float = 0.8
+    ) -> Dict[str, torch.Tensor]:
+        """
+        Load sample from reference data.
+
+        Args:
+            path: The paeh of the reference data file from which to load the
+                sample.
+            crop_size: The size of the input slice to load to load.
+            base_scale: The scale with respect to which the slices are defined.
+            slices: Tuple of ints defining the subset of reference data to load.
+            rng: A numpy random generator object to use to generate random numbers.
+            rotate: An optional float indicating the degrees by which to rotate
+                the input.
+            flip: Whether or not the input should be flipped.
+
+        Return:
+            A dictionary mapping retrieval target names to corresponding tensors.
+        """
+        from pytorch_retrieve.tensors.masked_tensor import MaskedTensor
+        rel_scale = self.scale / base_scale
+        if isinstance(crop_size, int):
+            crop_size = (crop_size,) * self.n_dim
+        crop_size = tuple((int(size / rel_scale) for size in crop_size))
+        row_slice, col_slice = scale_slices(slices, rel_scale)
+
+        if path is "None":
+            if isinstance(crop_size, tuple):
+                n_rows, n_cols = crop_size
+            else:
+                n_rows = crop_size
+                n_cols = crop_size
+            return {
+                target.name: MaskedTensor(
+                    torch.nan * torch.zeros((n_rows, n_cols)),
+                    mask = torch.ones((n_rows, n_cols), dtype=torch.bool)
+                ) for target in self.targets
+            }
+
+        y = {}
+
+        with xr.open_dataset(path) as data:
+            if self.quality_index is not None:
+                qual = data[self.quality_index]
+                qual = qual.data[row_slice, col_slice]
+                invalid = ~(qual >= quality_threshold)
+            else:
+                invalid = None
+
+            for target in self.targets:
+                y_t = data[target.name].data[row_slice, col_slice]
+                if not np.issubdtype(y_t.dtype, np.floating):
+                    y_t = y_t.astype(np.int64)
+
+                # Set window size here if it is None
+                if crop_size is None:
+                    crop_size = y_t.shape[-2:]
+
+                if target.lower_limit is not None:
+                    y_t[y_t < 0] = np.nan
+                    small = y_t < target.lower_limit
+                    rnd = rng.uniform(-5, -3, small.sum())
+                    y_t[small] = 10**rnd
+
+                if invalid is not None:
+                    y_t[invalid] = np.nan
+
+                if rotate is not None:
+                    y_t = ndimage.rotate(
+                        y_t, rotate, order=0, axes=(-2, -1), reshape=False, cval=np.nan
+                    )
+
+                    height = y_t.shape[-2]
+                    if height > crop_size[0]:
+                        d_l = (height - crop_size[0]) // 2
+                        d_r = d_l + crop_size[0]
+                        y_t = y_t[..., d_l:d_r, :]
+                    width = y_t.shape[-1]
+                    if width > crop_size[1]:
+                        d_l = (width - crop_size[1]) // 2
+                        d_r = d_l + crop_size[1]
+                        y_t = y_t[..., d_l:d_r]
+
+                if flip:
+                    y_t = np.flip(y_t, -2)
+
+                mask = torch.tensor(np.isnan(y_t))
+                tensor = torch.tensor(y_t.copy())
+                y[target.name] = MaskedTensor(tensor, mask=mask)
+
+            if self.include_coordinates:
+                lats = data.latitude.data[row_slice]
+                lons = data.longitude.data[col_slice]
+                lons, lats = np.meshgrid(lons, lats, indexing="xy")
+
+                if rotate is not None:
+                    lons = ndimage.rotate(
+                        lons, rotate, order=0, axes=(-2, -1), reshape=False, cval=np.nan
+                    )
+
+                    height = lons.shape[-2]
+                    if height > crop_size[0]:
+                        d_l = (height - crop_size[0]) // 2
+                        d_r = d_l + crop_size[0]
+                        lons = lons[..., d_l:d_r, :]
+                        lats = lats[..., d_l:d_r, :]
+                    width = lots.shape[-1]
+                    if width > crop_size[1]:
+                        d_l = (width - crop_size[1]) // 2
+                        d_r = d_l + crop_size[1]
+                        lons = lons[..., d_l:d_r]
+                        lats = lats[..., d_l:d_r]
+
+                if flip:
+                    lons = np.flip(lons, -2)
+                    lats = np.flip(lats, -2)
+
+                y["longitude"] = torch.tensor(lons)
+                y["latitude"] = torch.tensor(lats)
+
+        return y
+
 
 gpm = GPMCMB()
+gpm = GPMCMB(include_coordinates=True)
 
 
 class GPMGMI(ReferenceDataset):
-    """
-    Represents retrieval reference data derived from GMI PMW retrievals.
-    """
-    def __init__(self):
+    """"""
+    def __init__(
+            self,
+            include_coordinates: bool = False
+    ):
         super().__init__(
-            "gpm_gmi",
+            "gpm_gmi" if not include_coordinates else "gpm_gmi_coords",
             8,
             [RetrievalTarget("surface_precip")],
             quality_index=None,
         )
+        self.include_coordinates = include_coordinates
         self.spatial_dims = ("latitude", "longitude")
         self.scale = 8
 
@@ -535,7 +673,140 @@ class GPMGMI(ReferenceDataset):
                 data.to_netcdf(output_folder / filename, encoding=encoding)
 
 
+    def load_sample(
+            self,
+            path: Path,
+            crop_size: int,
+            base_scale,
+            slices: Tuple[int, int, int, int],
+            rng: np.random.Generator,
+            rotate: Optional[float] = None,
+            flip: Optional[bool] = None,
+            quality_threshold: float = 0.8
+    ) -> Dict[str, torch.Tensor]:
+        """
+        Load sample from reference data.
+
+        Args:
+            path: The paeh of the reference data file from which to load the
+                sample.
+            crop_size: The size of the input slice to load to load.
+            base_scale: The scale with respect to which the slices are defined.
+            slices: Tuple of ints defining the subset of reference data to load.
+            rng: A numpy random generator object to use to generate random numbers.
+            rotate: An optional float indicating the degrees by which to rotate
+                the input.
+            flip: Whether or not the input should be flipped.
+
+        Return:
+            A dictionary mapping retrieval target names to corresponding tensors.
+        """
+        from pytorch_retrieve.tensors.masked_tensor import MaskedTensor
+        rel_scale = self.scale / base_scale
+        if isinstance(crop_size, int):
+            crop_size = (crop_size,) * self.n_dim
+        crop_size = tuple((int(size / rel_scale) for size in crop_size))
+        row_slice, col_slice = scale_slices(slices, rel_scale)
+
+        if path is "None":
+            if isinstance(crop_size, tuple):
+                n_rows, n_cols = crop_size
+            else:
+                n_rows = crop_size
+                n_cols = crop_size
+            return {
+                target.name: MaskedTensor(
+                    torch.nan * torch.zeros((n_rows, n_cols)),
+                    mask = torch.ones((n_rows, n_cols), dtype=torch.bool)
+                ) for target in self.targets
+            }
+
+        y = {}
+
+        with xr.open_dataset(path) as data:
+            if self.quality_index is not None:
+                qual = data[self.quality_index]
+                qual = qual.data[row_slice, col_slice]
+                invalid = ~(qual >= quality_threshold)
+            else:
+                invalid = None
+
+            for target in self.targets:
+                y_t = data[target.name].data[row_slice, col_slice]
+                if not np.issubdtype(y_t.dtype, np.floating):
+                    y_t = y_t.astype(np.int64)
+
+                # Set window size here if it is None
+                if crop_size is None:
+                    crop_size = y_t.shape[-2:]
+
+                if target.lower_limit is not None:
+                    y_t[y_t < 0] = np.nan
+                    small = y_t < target.lower_limit
+                    rnd = rng.uniform(-5, -3, small.sum())
+                    y_t[small] = 10**rnd
+
+                if invalid is not None:
+                    y_t[invalid] = np.nan
+
+                if rotate is not None:
+                    y_t = ndimage.rotate(
+                        y_t, rotate, order=0, axes=(-2, -1), reshape=False, cval=np.nan
+                    )
+
+                    height = y_t.shape[-2]
+                    if height > crop_size[0]:
+                        d_l = (height - crop_size[0]) // 2
+                        d_r = d_l + crop_size[0]
+                        y_t = y_t[..., d_l:d_r, :]
+                    width = y_t.shape[-1]
+                    if width > crop_size[1]:
+                        d_l = (width - crop_size[1]) // 2
+                        d_r = d_l + crop_size[1]
+                        y_t = y_t[..., d_l:d_r]
+
+                if flip:
+                    y_t = np.flip(y_t, -2)
+
+                mask = torch.tensor(np.isnan(y_t))
+                tensor = torch.tensor(y_t.copy())
+                y[target.name] = MaskedTensor(tensor, mask=mask)
+
+            if self.include_coordinates:
+                lats = data.latitude.data[row_slice]
+                lons = data.longitude.data[col_slice]
+                lons, lats = np.meshgrid(lons, lats, indexing="xy")
+
+                if rotate is not None:
+                    lons = ndimage.rotate(
+                        lons, rotate, order=0, axes=(-2, -1), reshape=False, cval=np.nan
+                    )
+
+                    height = lons.shape[-2]
+                    if height > crop_size[0]:
+                        d_l = (height - crop_size[0]) // 2
+                        d_r = d_l + crop_size[0]
+                        lons = lons[..., d_l:d_r, :]
+                        lats = lats[..., d_l:d_r, :]
+                    width = lots.shape[-1]
+                    if width > crop_size[1]:
+                        d_l = (width - crop_size[1]) // 2
+                        d_r = d_l + crop_size[1]
+                        lons = lons[..., d_l:d_r]
+                        lats = lats[..., d_l:d_r]
+
+                if flip:
+                    lons = np.flip(lons, -2)
+                    lats = np.flip(lats, -2)
+
+                y["longitude"] = torch.tensor(lons)
+                y["latitude"] = torch.tensor(lats)
+
+        return y
+
+
 gpm_gmi = GPMGMI()
+gpm_gmi_coords = GPMGMI(include_coordinates=True)
 
 
 class GPMGMIClim(ReferenceDataset):
@@ -545,10 +816,11 @@ class GPMGMIClim(ReferenceDataset):
     def __init__(
             self,
             sensor_name,
-            pansat_product
+            pansat_product,
+            include_coordinates: bool = False
     ):
         super().__init__(
-            f"gpm_{sensor_name}_clim",
+            f"gpm_{sensor_name}_clim" if not include_coordinates else f"gpm_{sensor_name}_clim",
             8,
             [RetrievalTarget("surface_precip")],
             quality_index=None,
@@ -556,6 +828,7 @@ class GPMGMIClim(ReferenceDataset):
         self.pansat_product = pansat_product
         self.spatial_dims = ("latitude", "longitude")
         self.scale = 8
+        self.include_coordinates = include_coordinates
 
     def find_files(
             self,
@@ -583,7 +856,6 @@ class GPMGMIClim(ReferenceDataset):
         """
         time_range = TimeRange(start_time, end_time)
         recs = self.pansat_product.get(time_range)
-        print("RECS :: ", recs)
         return [rec.local_path for rec in recs]
 
 
@@ -779,6 +1051,138 @@ class GPMGMIClim(ReferenceDataset):
                         output_folder / filename
                 )
                 data.to_netcdf(output_folder / filename, encoding=encoding)
+
+
+    def load_sample(
+            self,
+            path: Path,
+            crop_size: int,
+            base_scale,
+            slices: Tuple[int, int, int, int],
+            rng: np.random.Generator,
+            rotate: Optional[float] = None,
+            flip: Optional[bool] = None,
+            quality_threshold: float = 0.8
+    ) -> Dict[str, torch.Tensor]:
+        """
+        Load sample from reference data.
+
+        Args:
+            path: The paeh of the reference data file from which to load the
+                sample.
+            crop_size: The size of the input slice to load to load.
+            base_scale: The scale with respect to which the slices are defined.
+            slices: Tuple of ints defining the subset of reference data to load.
+            rng: A numpy random generator object to use to generate random numbers.
+            rotate: An optional float indicating the degrees by which to rotate
+                the input.
+            flip: Whether or not the input should be flipped.
+
+        Return:
+            A dictionary mapping retrieval target names to corresponding tensors.
+        """
+        from pytorch_retrieve.tensors.masked_tensor import MaskedTensor
+        rel_scale = self.scale / base_scale
+        if isinstance(crop_size, int):
+            crop_size = (crop_size,) * self.n_dim
+        crop_size = tuple((int(size / rel_scale) for size in crop_size))
+        row_slice, col_slice = scale_slices(slices, rel_scale)
+
+        if path is "None":
+            if isinstance(crop_size, tuple):
+                n_rows, n_cols = crop_size
+            else:
+                n_rows = crop_size
+                n_cols = crop_size
+            return {
+                target.name: MaskedTensor(
+                    torch.nan * torch.zeros((n_rows, n_cols)),
+                    mask = torch.ones((n_rows, n_cols), dtype=torch.bool)
+                ) for target in self.targets
+            }
+
+        y = {}
+
+        with xr.open_dataset(path) as data:
+            if self.quality_index is not None:
+                qual = data[self.quality_index]
+                qual = qual.data[row_slice, col_slice]
+                invalid = ~(qual >= quality_threshold)
+            else:
+                invalid = None
+
+            for target in self.targets:
+                y_t = data[target.name].data[row_slice, col_slice]
+                if not np.issubdtype(y_t.dtype, np.floating):
+                    y_t = y_t.astype(np.int64)
+
+                # Set window size here if it is None
+                if crop_size is None:
+                    crop_size = y_t.shape[-2:]
+
+                if target.lower_limit is not None:
+                    y_t[y_t < 0] = np.nan
+                    small = y_t < target.lower_limit
+                    rnd = rng.uniform(-5, -3, small.sum())
+                    y_t[small] = 10**rnd
+
+                if invalid is not None:
+                    y_t[invalid] = np.nan
+
+                if rotate is not None:
+                    y_t = ndimage.rotate(
+                        y_t, rotate, order=0, axes=(-2, -1), reshape=False, cval=np.nan
+                    )
+
+                    height = y_t.shape[-2]
+                    if height > crop_size[0]:
+                        d_l = (height - crop_size[0]) // 2
+                        d_r = d_l + crop_size[0]
+                        y_t = y_t[..., d_l:d_r, :]
+                    width = y_t.shape[-1]
+                    if width > crop_size[1]:
+                        d_l = (width - crop_size[1]) // 2
+                        d_r = d_l + crop_size[1]
+                        y_t = y_t[..., d_l:d_r]
+
+                if flip:
+                    y_t = np.flip(y_t, -2)
+
+                mask = torch.tensor(np.isnan(y_t))
+                tensor = torch.tensor(y_t.copy())
+                y[target.name] = MaskedTensor(tensor, mask=mask)
+
+            if self.include_coordinates:
+                lats = data.latitude.data[row_slice]
+                lons = data.longitude.data[col_slice]
+                lons, lats = np.meshgrid(lons, lats, indexing="xy")
+
+                if rotate is not None:
+                    lons = ndimage.rotate(
+                        lons, rotate, order=0, axes=(-2, -1), reshape=False, cval=np.nan
+                    )
+
+                    height = lons.shape[-2]
+                    if height > crop_size[0]:
+                        d_l = (height - crop_size[0]) // 2
+                        d_r = d_l + crop_size[0]
+                        lons = lons[..., d_l:d_r, :]
+                        lats = lats[..., d_l:d_r, :]
+                    width = lots.shape[-1]
+                    if width > crop_size[1]:
+                        d_l = (width - crop_size[1]) // 2
+                        d_r = d_l + crop_size[1]
+                        lons = lons[..., d_l:d_r]
+                        lats = lats[..., d_l:d_r]
+
+                if flip:
+                    lons = np.flip(lons, -2)
+                    lats = np.flip(lats, -2)
+
+                y["longitude"] = torch.tensor(lons)
+                y["latitude"] = torch.tensor(lats)
+
+        return y
 
 
 gpm_gmi_clim = GPMGMIClim("gmi", l2a_clim_gprof_gpm_gmi_v08a)

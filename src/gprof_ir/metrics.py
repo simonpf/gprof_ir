@@ -4,7 +4,7 @@ gprof_ir.metrics
 
 Extends the metrics available from the satrain package with spatially resolved metrics.
 """
-from typing import Optional
+from typing import Optional, Tuple
 
 import numpy as np
 import xarray as xr
@@ -84,6 +84,8 @@ class BiasSpatial(QuantificationMetric):
         valid = np.isfinite(target)
         pred = pred[valid]
         target = target[valid]
+        lons = lons[valid]
+        lats = lats[valid]
 
         with self.lock:
             self.x_sum += np.histogram2d(lats, lons, weights=pred, bins=self.bins)[0]
@@ -173,6 +175,8 @@ class MAESpatial(QuantificationMetric):
         valid = np.isfinite(target)
         pred = pred[valid]
         target = target[valid]
+        lons = lons[valid]
+        lats = lats[valid]
 
         with self.lock:
             self.tot_abs_error += np.histogram2d(
@@ -269,21 +273,14 @@ class SMAPESpatial(QuantificationMetric):
         valid = np.isfinite(target) * np.abs(target) > self.threshold
         pred = pred[valid]
         target = target[valid]
+        lons = lons[valid]
+        lats = lats[valid]
 
         with self.lock:
             with np.errstate(invalid='ignore'):
                 err = np.abs(pred - target) / (0.5 * (np.abs(pred) + np.abs(target)))
-                self.tot_rel_error += np.histogram2d(
-                    lats[valid],
-                    lons[valid],
-                    weigths=err,
-                    bins=self.bins
-                )[0]
-                self.counts += np.histogram2d(
-                    lats[valid],
-                    lons[valid],
-                    valid
-                )[0]
+                self.tot_rel_error += np.histogram2d(lats, lons, weights=err, bins=self.bins)[0]
+                self.counts += np.histogram2d(lats, lons, bins=self.bins)[0]
 
 
     def compute(self) -> xr.Dataset:
@@ -306,7 +303,7 @@ class SMAPESpatial(QuantificationMetric):
         return smape
 
 
-class MSE(QuantificationMetric):
+class MSESpatial(QuantificationMetric):
     r"""
     The mean-squared error calculated as the mean value of the squared difference between
     prediction and target values:
@@ -341,8 +338,8 @@ class MSE(QuantificationMetric):
         self.lons = 0.5 * (self.bins[1][1:] + self.bins[1][:-1])
         super().__init__(
             buffers={
-                "tot_sq_error": ((self.n_lats, self.n_lons), np.float64),
-                "counts": ((self.n_lats, self.n_lons), np.float64),
+                "tot_sq_error": ((self.n_lat, self.n_lon), np.float64),
+                "counts": ((self.n_lat, self.n_lon), np.float64),
             }
         )
 
@@ -374,7 +371,7 @@ class MSE(QuantificationMetric):
                 weights=(pred - target) ** 2,
                 bins=self.bins
             )[0]
-            self.counts += np.hisogram2d(
+            self.counts += np.histogram2d(
                 lats,
                 lons,
                 bins=self.bins
@@ -390,16 +387,16 @@ class MSE(QuantificationMetric):
         """
         with np.errstate(invalid='ignore'):
             mse = xr.Dataset({
-                "latitude": (self.dims, self.lats),
-                "longitude": (self.dims, self.lons),
-                "mse": (self.dims, self.tot_sq_error / self.counts)
+                "latitude": (("latitude",), self.lats),
+                "longitude": (("longitude",), self.lons),
+                "mse_spatial": (self.dims, self.tot_sq_error / self.counts)
             })
-        mse.mse.attrs["full_name"] = "Spatial MSE Distribution"
-        mse.mse.attrs["unit"] = "(mm h^{-1})^2"
+        mse.mse_spatial.attrs["full_name"] = "Spatial MSE Distribution"
+        mse.mse_spatial.attrs["unit"] = "(mm h^{-1})^2"
         return mse
 
 
-class CorrelationCoef(QuantificationMetric):
+class CorrelationCoefSpatial(QuantificationMetric):
     r"""
     The linear correlation coefficient between predictions and target values.
 
@@ -435,14 +432,15 @@ class CorrelationCoef(QuantificationMetric):
         self.dims = ("latitude", "longitude")
         self.lats = 0.5 * (self.bins[0][1:] + self.bins[0][:-1])
         self.lons = 0.5 * (self.bins[1][1:] + self.bins[1][:-1])
+        shape = (self.n_lat, self.n_lon)
         super().__init__(
             buffers={
-                "x_sum": ((1,), np.float64),
-                "x2_sum": ((1,), np.float64),
-                "y_sum": ((1,), np.float64),
-                "y2_sum": ((1,), np.float64),
-                "xy_sum": ((1,), np.float64),
-                "counts": ((1,), np.int64),
+                "x_sum": (shape, np.float64),
+                "x2_sum": (shape, np.float64),
+                "y_sum": (shape, np.float64),
+                "y2_sum": (shape, np.float64),
+                "xy_sum": (shape, np.float64),
+                "counts": (shape, np.float64),
             }
         )
 
@@ -470,12 +468,12 @@ class CorrelationCoef(QuantificationMetric):
         lats = lats[valid]
 
         with self.lock:
-            self.x_sum += np.histogram2d(lons, lats, wegiths=pred, bins=self.bins)[0]
-            self.x2_sum += np.histogram2d(lons, lats, wegiths=pred ** 2, bins=self.bins)[0]
-            self.y_sum += np.histogram2d(lons, lats, wegiths=target, bins=self.bins)[0]
-            self.y2_sum += np.histogram2d(lons, lats, wegiths=target ** 2, bins=self.bins)[0]
-            self.yz_sum += np.histogram2d(lons, lats, wegiths=pred * target, bins=self.bins)[0]
-            self.counts += np.histogram2d(lons, lats)[0]
+            self.x_sum += np.histogram2d(lats, lons, weights=pred, bins=self.bins)[0]
+            self.x2_sum += np.histogram2d(lats, lons, weights=pred ** 2, bins=self.bins)[0]
+            self.y_sum += np.histogram2d(lats, lons, weights=target, bins=self.bins)[0]
+            self.y2_sum += np.histogram2d(lats, lons, weights=target ** 2, bins=self.bins)[0]
+            self.xy_sum += np.histogram2d(lats, lons, weights=pred * target, bins=self.bins)[0]
+            self.counts += np.histogram2d(lats, lons, bins=self.bins)[0]
 
     def compute(self) -> xr.Dataset:
         """
@@ -496,22 +494,155 @@ class CorrelationCoef(QuantificationMetric):
 
             # Handle edge case where both variables have zero variance (perfect correlation)
             denominator = x_sigma * y_sigma
-            if np.isclose(denominator, 0.0, atol=1e-15):
-                # If both have zero variance, they have perfect correlation if same mean
-                if np.isclose(x_mean, y_mean, atol=1e-15):
-                    corr = np.array([1.0])  # Perfect positive correlation
-                else:
-                    corr = np.array([np.nan])  # Undefined correlation
-            else:
-                numerator = xy_mean - x_mean * y_mean
-                corr = numerator / denominator
+            numerator = xy_mean - x_mean * y_mean
+            corr = numerator / denominator
+
+            mask = np.isclose(denominator, 0.0, atol=1e-15)
+            corr = np.where(mask, np.nan, corr)
+            perfect = mask * np.isclose(x_mean, y_mean, atol=1e-15)
+            corr = np.where(perfect, 1.0, corr)
 
         corr = xr.Dataset({
             "latitude": (("latitude",), self.lats),
             "longitude": (("longitue"), self.lons),
-            "correlation_coef": (self.dims, corr)
+            "correlation_coef_spatial": (self.dims, corr)
         })
-        corr.correlation_coef.attrs["full_name"] = "Spatial Correlation Coeff. Distribution"
-        corr.correlation_coef.attrs["unit"] = ""
+        corr.correlation_coef_spatial.attrs["full_name"] = "Spatial Correlation Coeff. Distribution"
+        corr.correlation_coef_spatial.attrs["unit"] = ""
         return corr
 
+
+
+class Calibration(QuantificationMetric):
+    r"""
+    Calibration plot of predicted quantiles.
+    """
+
+    def __init__(
+            self,
+            tau: np.ndarray
+    ):
+        """
+        Args:
+            tau: An array containing the predicted quantile fractions.
+        """
+        n_quants = tau.size
+        self.tau = tau
+        super().__init__(
+            buffers={
+                "less_than": ((n_quants,), np.float64),
+                "counts": ((n_quants,), np.float64),
+            }
+        )
+
+    def update(
+            self,
+            prediction: np.ndarray,
+            target: np.ndarray
+    ) -> None:
+        """
+        Update metric values with given prediction.
+
+        Args:
+             lons: The longitude coordinates of the retrievals.
+             lats: The latitude coordinates of the retrievals.
+             prediction: An np.ndarray containing the predicted values.
+             target: An np.ndarray containing the reference values.
+        """
+        pred = prediction
+        if target.ndim < pred.ndim:
+            target = np.expand_dims(target, 1)
+        target = np.broadcast_to(target, pred.shape)
+        valid = np.isfinite(target)
+        target = np.where(valid, target, pred + 1)
+        dims = tuple([dim for dim in np.arange(target.ndim) if dim != 1])
+
+        with self.lock:
+
+            self.less_than += (target <= prediction).sum(axis=dims)
+            self.counts += valid.sum(dims).astype(np.float32)
+
+
+    def compute(self, name: Optional[str] = None) -> xr.Dataset:
+        """
+        Calculate the MSE for all results passed to this metric object.
+
+        Return:
+            An xarray.Dataset containing a single, scalar variable 'mse' containing the
+            MSE for the assessed results.
+        """
+        with np.errstate(invalid="ignore"):
+            calibration = self.less_than / self.counts
+
+        calibration = xr.Dataset({
+            "tau": (("tau",), self.tau),
+            "calibration": (("calibration",), calibration),
+        })
+        calibration.calibration["full_name"] = "Calibration"
+        calibration.calibration.attrs["unit"] = r"Fraction"
+        return calibration
+
+
+class DetectionCalibration(QuantificationMetric):
+    r"""
+    Calibration plot of predicted quantiles.
+    """
+
+    def __init__(
+            self,
+    ):
+        """
+        Args:
+            tau: An array containing the predicted quantile fractions.
+        """
+        self.bins = np.linspace(0.1, 1, 21)
+        self.levels = 0.5 * (self.bins[1:] + self.bins[:-1])
+        self.n_levels = self.levels.size
+        super().__init__(
+            buffers={
+                "right": ((self.n_levels,), np.float64),
+                "counts": ((self.n_levels,), np.float64),
+            }
+        )
+
+    def update(
+            self,
+            prediction: np.ndarray,
+            target: np.ndarray
+    ) -> None:
+        """
+        Update metric values with given prediction.
+
+        Args:
+             lons: The longitude coordinates of the retrievals.
+             lats: The latitude coordinates of the retrievals.
+             prediction: An np.ndarray containing the predicted values.
+             target: An np.ndarray containing the reference values.
+        """
+        valid = np.isfinite(target)
+        pred = prediction[valid]
+        target = target[valid]
+
+        with self.lock:
+            self.right += np.histogram(pred, weights=target, bins=self.bins)[0]
+            self.counts += np.histogram(pred, bins=self.bins)[0]
+
+
+    def compute(self, name: Optional[str] = None) -> xr.Dataset:
+        """
+        Calculate the MSE for all results passed to this metric object.
+
+        Return:
+            An xarray.Dataset containing a single, scalar variable 'mse' containing the
+            MSE for the assessed results.
+        """
+        with np.errstate(invalid="ignore"):
+            calibration = self.right / self.counts
+
+        calibration = xr.Dataset({
+            "levels": (("levels",), self.levels),
+            "calibration": (("levels",), calibration),
+        })
+        calibration.calibration["full_name"] = "Detetion Calibration"
+        calibration.calibration.attrs["unit"] = r"Fraction"
+        return calibration
