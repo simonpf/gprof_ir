@@ -393,7 +393,10 @@ class MultiInputLoader:
         Iterate over retrieval input files.
         """
         for path in self.files:
-            yield self.load_input(path)
+            try:
+                yield self.load_input(path)
+            except Exception:
+                continue
 
     def __getitem__(self, ind: int) -> Tuple[Dict[str, torch.Tensor], Dict[str, Any], str]:
         """
@@ -863,7 +866,7 @@ class SingleInputLoader:
 
         if pop is not None:
             results["probability_of_precip"] = (("time", "latitude", "longitude"), pop)
-            results["probability_of_heavy_precip"] = (("time", "latitude", "longitude"), pop)
+            results["probability_of_heavy_precip"] = (("time", "latitude", "longitude"), pop_heavy)
 
         results.surface_precip.encoding = {"dtype": "float32", "zlib": True}
         results.quality_flag.encoding = {"zlib": True}
