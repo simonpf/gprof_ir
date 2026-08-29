@@ -1,0 +1,56 @@
+[stage_1]
+n_epochs = 20
+optimizer = "AdamW"
+optimizer_args = {lr = 5e-4}
+#sequence_length = 16
+scene_size = 256
+training_data_path = "/home/simon/data/gprof_ir/training_data"
+validation_data_path = "/home/simon/data/gprof_ir/validation_data"
+input_datasets = ["merged_ir"]
+reference_datasets = ["gpm"]
+batch_size = 8
+accumulate_grad_batches = 1
+metrics = ["Bias", "MSE", "CorrelationCoef", "PlotSamples"]
+scheduler = "CosineAnnealingLR"
+scheduler_args = {T_max=20}
+sample_rate = 0.5
+n_data_loader_workers = 4
+
+[stage_2]
+n_epochs = 40
+optimizer = "AdamW"
+optimizer_args = {lr = 5e-4}
+#sequence_length = 16
+scene_size = 256
+training_data_path = "/home/simon/data/gprof_ir/training_data"
+validation_data_path = "/home/simon/data/gprof_ir/validation_data"
+input_datasets = ["merged_ir"]
+reference_datasets = ["gpm"]
+batch_size = 8
+accumulate_grad_batches = 4
+metrics = ["Bias", "MSE", "CorrelationCoef", "PlotSamples"]
+scheduler = "CosineAnnealingLR"
+scheduler_args = {T_max=40}
+reuse_optimizer = true
+sample_rate = 0.5
+n_data_loader_workers = 4
+
+[stage_3]
+n_epochs = 80
+optimizer = "AdamW"
+optimizer_args = {lr = 5e-4}
+scene_size = 256
+#sequence_length = 16
+training_data_path = "/home/simon/data/gprof_ir/training_data"
+validation_data_path = "/home/simon/data/gprof_ir/validation_data"
+input_datasets = ["merged_ir"]
+reference_datasets = ["gpm"]
+batch_size = 8
+accumulate_grad_batches = 1
+metrics = ["Bias", "MSE", "CorrelationCoef", "PlotSamples"]
+scheduler = "CosineAnnealingLR"
+scheduler_args = {T_max=80}
+reuse_optimizer = true
+sample_rate = 0.5
+n_data_loader_workers = 4
+_data_loader_workers = 4

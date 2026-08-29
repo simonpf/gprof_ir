@@ -27,12 +27,12 @@
      showguides="true"
      inkscape:guide-bbox="true"
      inkscape:zoom="0.59517455"
-     inkscape:cx="633.42762"
-     inkscape:cy="204.98188"
+     inkscape:cx="811.52664"
+     inkscape:cy="186.49991"
      inkscape:window-width="2540"
-     inkscape:window-height="1401"
+     inkscape:window-height="1367"
      inkscape:window-x="8"
-     inkscape:window-y="8"
+     inkscape:window-y="44"
      inkscape:window-maximized="1"
      inkscape:current-layer="g129203"
      fit-margin-top="0"
@@ -378,7 +378,7 @@
          y="237.93756"
          style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:15.36px;font-family:sans-serif;-inkscape-font-specification:'sans-serif Bold';fill:#ffaa5a;fill-opacity:0.992657;stroke-width:1.44">1 x MBConvF(e=1)</tspan></text>
     <path
-       style="fill:#ffaa59;fill-opacity:0.996078;stroke:#666666;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       style="fill:#ffaa59;fill-opacity:0.99607843;stroke:#d7ab81;stroke-width:1.5;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:0.99607843;stroke-miterlimit:4;stroke-dasharray:6,6;stroke-dashoffset:0"
        d="m 82.96082,88.20353 v 62.36325"
        id="path29525" />
     <text
@@ -404,7 +404,7 @@
          y="98.630219"
          style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:15.36px;font-family:sans-serif;-inkscape-font-specification:'sans-serif Bold';fill:#c5aaf4;fill-opacity:0.987488;stroke-width:1.44">3 x MBConv(e=4)</tspan></text>
     <path
-       style="fill:none;stroke:#666666;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       style="fill:none;stroke:#d7ab81;stroke-width:1.5;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:0.99607843;stroke-miterlimit:4;stroke-dasharray:6,6;stroke-dashoffset:0"
        d="M 573.13697,96.94862 V 176.8084"
        id="path29531" />
     <text
@@ -419,11 +419,11 @@
          y="153.35912"
          style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:15.36px;font-family:sans-serif;-inkscape-font-specification:'sans-serif Bold';fill:#ffaa5a;fill-opacity:0.992657;stroke-width:1.44">1 x MBConvF(e=2)</tspan></text>
     <path
-       style="fill:none;stroke:#666666;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       style="fill:#c5aaf4;stroke:#c5aaf4;stroke-width:1.5;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:0.98823529;stroke-miterlimit:4;stroke-dasharray:6,6;fill-opacity:0.98823529;stroke-dashoffset:0"
        d="m 299.03854,39.75823 v 9.52034"
        id="path29513" />
     <path
-       style="fill:none;stroke:#666666;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       style="fill:#c5aaf4;stroke:#c5aaf4;stroke-width:1.5;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:0.988235;stroke-miterlimit:4;stroke-dasharray:6, 6;stroke-dashoffset:0;font-variation-settings:normal;opacity:1;vector-effect:none;fill-opacity:0.988235;-inkscape-stroke:none;stop-color:#000000;stop-opacity:1"
        d="m 442.74595,46.7641 v 53.44896"
        id="path29517"
        sodipodi:nodetypes="cc" />
@@ -439,11 +439,11 @@
          style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:15.36px;font-family:sans-serif;-inkscape-font-specification:'sans-serif Bold';text-align:center;text-anchor:middle;fill:#c5aaf4;fill-opacity:0.987488;stroke-width:1.44"
          id="tspan28636">3 x MBConv(e=4)</tspan></text>
     <path
-       style="fill:none;stroke:#666666;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       style="fill:#c5aaf4;stroke:#c5aaf4;stroke-width:1.5;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:0.98823529;stroke-miterlimit:4;stroke-dasharray:6,6;fill-opacity:0.98823529;stroke-dashoffset:0"
        d="M 376.75035,39.27717 V 68.40079"
        id="path29515" />
     <path
-       style="fill:none;stroke:#666666;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       style="fill:none;stroke:#d7ab81;stroke-width:1.5;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:0.99607843;stroke-miterlimit:4;stroke-dasharray:6,6;stroke-dashoffset:0"
        d="m 510.4792,63.22053 v 76.9756"
        id="path29521" />
     <text
@@ -458,19 +458,19 @@
          y="116.92513"
          style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:15.36px;font-family:sans-serif;-inkscape-font-specification:'sans-serif Bold';fill:#c5aaf4;fill-opacity:0.987488;stroke-width:1.44">2 x MBConv(e=4)</tspan></text>
     <path
-       style="fill:none;stroke:#666666;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       style="fill:#c5aaf4;stroke:#c5aaf4;stroke-width:1.5;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:0.98823529;stroke-miterlimit:4;stroke-dasharray:6,6;fill-opacity:0.98823529;stroke-dashoffset:0"
        d="M 227.35526,47.15056 V 85.39738"
        id="path29519" />
     <text
        xml:space="preserve"
-       style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:15.36px;line-height:1.25;font-family:sans-serif;-inkscape-font-specification:'sans-serif Bold';fill:#c5aaf4;fill-opacity:0.987488;stroke:none;stroke-width:1.44"
+       style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:15.36px;line-height:1.25;font-family:sans-serif;-inkscape-font-specification:'sans-serif Bold';fill:#c5aaf4;fill-opacity:0.98823529;stroke:none;stroke-width:1.44"
        x="300.44714"
        y="60.617233"
        id="text206259-1-1-3-8"><tspan
          sodipodi:role="line"
          x="300.44714"
          y="60.617233"
-         style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:15.36px;font-family:sans-serif;-inkscape-font-specification:'sans-serif Bold';text-align:center;text-anchor:middle;fill:#c5aaf4;fill-opacity:0.987488;stroke-width:1.44"
+         style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:15.36px;font-family:sans-serif;-inkscape-font-specification:'sans-serif Bold';text-align:center;text-anchor:middle;fill:#c5aaf4;fill-opacity:0.98823529;stroke-width:1.44"
          id="tspan22410">4 x MBConv(e=6)</tspan></text>
     <text
        xml:space="preserve"
@@ -10861,7 +10861,7 @@
       </g>
     </g>
     <path
-       style="fill:#ffaa59;fill-opacity:0.996078;stroke:#666666;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       style="fill:#ffaa59;fill-opacity:0.996078;stroke:#d7ab81;stroke-width:1.5;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:0.996078;font-variation-settings:normal;opacity:1;vector-effect:none;stroke-miterlimit:4;stroke-dasharray:6, 6;stroke-dashoffset:0;-inkscape-stroke:none;stop-color:#000000;stop-opacity:1"
        d="m 158.59069,62.37926 v 43.48502"
        id="path29523" />
     <g
@@ -10976,11 +10976,11 @@
        id="path319458"
        sodipodi:nodetypes="cccc" />
     <path
-       style="fill:#ffaa59;fill-opacity:0.996078;stroke:#666666;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       style="fill:#ffaa59;fill-opacity:0.99607843;stroke:#d7ab81;stroke-width:1.5;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:0.99607843;stroke-miterlimit:4;stroke-dasharray:6,6;stroke-dashoffset:0"
        d="m -100.79944,167.80864 v 52.55499"
        id="path29527" />
     <path
-       style="fill:#ffaa59;fill-opacity:0.996078;stroke:#666666;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       style="fill:#ffaa59;fill-opacity:0.99607843;stroke:#d7ab81;stroke-width:1.5;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:0.99607843;stroke-miterlimit:4;stroke-dasharray:6,6;stroke-dashoffset:0"
        d="m 7.83361,146.73864 v 40.57653"
        id="path29529"
        sodipodi:nodetypes="cc" />
