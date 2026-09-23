@@ -2,7 +2,7 @@
 gprof_ir.cli
 ============
 
-Defines the command line interface for GPROF IR.
+Defines the command line interface for GPROF-IR.
 """
 from importlib.metadata import version, import_module
 import logging
@@ -12,6 +12,7 @@ from rich.logging import RichHandler
 
 from . import retrieval
 from .config import CONFIG, set_model_path
+from .clim import cli_single_clim, cli_multi_clim
 
 
 FORMAT = "%(message)s"
@@ -31,7 +32,7 @@ LOGGER = logging.getLogger(__name__)
 @click.version_option(version("gprof_ir"))
 def gprof_ir():
     """
-    The command line interface for the GPROF IR preciptiation retrieval.
+    The command line interface for the GPROF-IR preciptiation retrieval.
     """
     pass
 
@@ -53,13 +54,24 @@ def display_config():
 config.command(name="set_model_path")(set_model_path)
 
 
-gprof_ir.command(name="retrieve", help="Run the GPROF IR retrieval for a single timestep.")(retrieval.cli_single)
-gprof_ir.command(name="run", help="Run the GPROF IR retrieval for multiple timesteps.")(retrieval.cli_multi)
+gprof_ir.command(name="retrieve", help="Run the GPROF-IR retrieval for a single timestep.")(retrieval.cli_single)
+gprof_ir.command(name="run", help="Run the GPROF-IR retrieval for multiple timesteps.")(retrieval.cli_multi)
 try:
     testing = import_module("gprof_ir.testing")
-    gprof_ir.command(name="test", help="Test GPROF IR retrieval on independent test data.")(testing.cli)
+    gprof_ir.command(name="test", help="Test GPROF-IR retrieval on independent test data.")(testing.cli)
 except ImportError:
     pass
+
+
+@gprof_ir.group()
+def clim():
+    """
+    Run the GPROF-IR CLIM retrieval.
+    """
+    pass
+
+clim.command(name="retrieve", help="Run the GPROF-IR CLIM retrieval for a single timestep.")(cli_single_clim)
+clim.command(name="run", help="Run the GPROF-IR CLIM retrieval for multiple timesteps.")(cli_multi_clim)
 
 
 @gprof_ir.command(name="download_models")
