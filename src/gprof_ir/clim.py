@@ -306,6 +306,7 @@ class MultiInputLoader:
             inpt = {
                 "gridsat_b1": torch.tensor(input_data.irwin_cdr.data[:, None])
             }
+            input_data = input_data[{"time": 0}]
         else:
             input_data = load_ir_tbs_multi_step(
                 path,
@@ -474,7 +475,6 @@ def run_retrieval_multi(
         device,
         include_probabilities=include_probabilities
     )
-    print(inference_config)
 
     # Input loader
     input_path = Path(input_path)
