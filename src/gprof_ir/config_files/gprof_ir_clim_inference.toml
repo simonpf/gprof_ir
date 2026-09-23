@@ -1,0 +1,8 @@
+input_loader = "gprof_ir.clim.MultiInputLoader"
+batch_size = 16
+tile_size = [256]
+spatial_overlap = 64
+wrap_columns = true
+
+[retrieval_output.surface_precip]
+surface_precip = "ExpectedValue"

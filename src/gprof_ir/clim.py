@@ -99,7 +99,7 @@ def load_inference_config(
     Args:
         model:
     """
-    config_path = Path(__file__).parent / "config_files" / "gprof_ir_ss_inference.toml"
+    config_path = Path(__file__).parent / "config_files" / "gprof_ir_clim_inference.toml"
     inference_config = toml.loads(open(config_path).read())
     inference_config = InferenceConfig.parse(
         model.output_config,
@@ -140,8 +140,8 @@ def get_next_input_file(path: Path) -> Path:
     """
     path = Path(path)
     date = get_date(path)
-    previous_date = date + timedelta(hours=3)
-    fname = previous_date.strftime("GRIDSAT-B1.%Y.%m.%d.%H.v02r01") + path.suffix
+    next_date = date + timedelta(hours=3)
+    fname = next_date.strftime("GRIDSAT-B1.%Y.%m.%d.%H.v02r01") + path.suffix
     return path.parent / fname
 
 
@@ -183,7 +183,7 @@ def load_ir_tbs_multi_step(
             data.append(load_input_data(path, slices=slices))
         else:
             LOGGER.warning(
-                "Tried IR input  data from %s but the file doesn't exist.",
+                "Tried loading IR input data from %s but the file doesn't exist.",
                 path
             )
             dummy = load_input_data(input_file).copy(deep=True)
@@ -314,16 +314,13 @@ class MultiInputLoader:
             )
             n_times = input_data.time.size
             inpt = {
-                "gridsat_b1": torch.stack([
-                    torch.tensor(input_data.irwin_cdr.data[n_times - self.n_steps - 1: n_times - 1]),
-                    torch.tensor(input_data.irwin_cdr.data[n_times - self.n_steps: n_times])
-                ])
+                "gridsat_b1": torch.tensor(input_data.irwin_cdr.data[None])
             }
-            input_data = input_data[{"time": slice(n_times - 2, n_times)}]
+            input_data = input_data[{"time": 1}]
 
         # Calculate invalid input mask
         valid = np.isfinite(input_data.irwin_cdr.data)
-        elem = np.ones((1, 8, 8))
+        elem = np.ones((8, 8))
         valid = binary_closing(valid, elem, border_value=1)
 
         lats = input_data.lat.data
@@ -372,7 +369,7 @@ class MultiInputLoader:
             aux: Auxiliary data as returned by this input loader.
             filename: The output filename as returned by the input loader.
         """
-        surface_precip = results["surface_precip"].data.numpy()[:, 0]
+        surface_precip = results["surface_precip"].data.numpy()[0, 0]
         quality = np.zeros_like(surface_precip, dtype=np.int8)
 
         invalid = (surface_precip < -0.01) * (surface_precip > 200)
@@ -400,9 +397,9 @@ class MultiInputLoader:
         results = xr.Dataset({
             "latitude": (("latitude",), aux["latitude"]),
             "longitude": (("longitude",), aux["longitude"]),
-            "time": (("time",), aux["time"]),
-            "surface_precip": (("time", "latitude", "longitude"), surface_precip),
-            "quality_flag": (("time", "latitude", "longitude"), quality)
+            "time": (("time",), [aux["time"]]),
+            "surface_precip": (("latitude", "longitude"), surface_precip),
+            "quality_flag": (("latitude", "longitude"), quality)
         })
 
         if pop is not None:
@@ -477,6 +474,7 @@ def run_retrieval_multi(
         device,
         include_probabilities=include_probabilities
     )
+    print(inference_config)
 
     # Input loader
     input_path = Path(input_path)
@@ -504,7 +502,8 @@ def run_retrieval_multi(
         output_path=output_path,
         device=device,
         dtype=dtype,
-        progress=progress
+        progress=progress,
+        robust=False
     )
 
 @click.argument("input_path", type=str)
