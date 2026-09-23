@@ -70,9 +70,8 @@ def clim():
     """
     pass
 
-gprof_ir.command(name="retrieve", help="Run the GPROF-IR CLIM retrieval for a single timestep.")(cli_single_clim)
-gprof_ir.command(name="run", help="Run the GPROF-IR CLIM retrieval for multiple timesteps.")(cli_multi_clim)
-
+clim.command(name="retrieve", help="Run the GPROF-IR CLIM retrieval for a single timestep.")(cli_single_clim)
+clim.command(name="run", help="Run the GPROF-IR CLIM retrieval for multiple timesteps.")(cli_multi_clim)
 
 @gprof_ir.command(name="download_models")
 @click.option(
