@@ -27,8 +27,8 @@
      showguides="true"
      inkscape:guide-bbox="true"
      inkscape:zoom="0.59517455"
-     inkscape:cx="811.52664"
-     inkscape:cy="186.49991"
+     inkscape:cx="987.94547"
+     inkscape:cy="194.90081"
      inkscape:window-width="2540"
      inkscape:window-height="1367"
      inkscape:window-x="8"
@@ -110,6 +110,48 @@
   </sodipodi:namedview>
   <defs
      id="defs26989">
+    <marker
+       style="overflow:visible"
+       id="TriangleOutM"
+       refX="0.0"
+       refY="0.0"
+       orient="auto"
+       inkscape:stockid="TriangleOutM"
+       inkscape:isstock="true">
+      <path
+         transform="scale(0.4)"
+         style="fill-rule:evenodd;fill:context-stroke;stroke:context-stroke;stroke-width:1.0pt"
+         d="M 5.77,0.0 L -2.88,5.0 L -2.88,-5.0 L 5.77,0.0 z "
+         id="path39746" />
+    </marker>
+    <marker
+       style="overflow:visible"
+       id="Arrow1Lstart"
+       refX="0.0"
+       refY="0.0"
+       orient="auto"
+       inkscape:stockid="Arrow1Lstart"
+       inkscape:isstock="true">
+      <path
+         transform="scale(0.8) translate(12.5,0)"
+         style="fill-rule:evenodd;fill:context-stroke;stroke:context-stroke;stroke-width:1.0pt"
+         d="M 0.0,0.0 L 5.0,-5.0 L -12.5,0.0 L 5.0,5.0 L 0.0,0.0 z "
+         id="path39601" />
+    </marker>
+    <marker
+       style="overflow:visible"
+       id="TriangleOutL"
+       refX="0.0"
+       refY="0.0"
+       orient="auto"
+       inkscape:stockid="TriangleOutL"
+       inkscape:isstock="true">
+      <path
+         transform="scale(0.8)"
+         style="fill-rule:evenodd;fill:context-stroke;stroke:context-stroke;stroke-width:1.0pt"
+         d="M 5.77,0.0 L -2.88,5.0 L -2.88,-5.0 L 5.77,0.0 z "
+         id="path39743" />
+    </marker>
     <marker
        markerWidth="5"
        markerHeight="5"
@@ -1026,18 +1068,18 @@
        opacity="1"
        id="image67834" />
     <path
-       style="fill:none;stroke:#000000;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;marker-end:url(#d0)"
+       style="fill:none;stroke:#5e5c64;stroke-width:1.5;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;marker-end:url(#TriangleOutM);stroke-miterlimit:4;stroke-dasharray:12,6;stroke-dashoffset:0"
        d="M 49.205214,-30.759701 V -65.89271 -90.798003 H 627.22031 v 45.168319"
        id="path319452"
        sodipodi:nodetypes="ccccc" />
     <path
-       style="fill:none;stroke:#000000;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;marker-end:url(#d0)"
-       d="M 122.77637,-1.2141311 V -65.89271 H 552.0935 v 56.2368539"
+       style="fill:none;stroke:#5e5c64;stroke-width:1.5;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;marker-end:url(#TriangleOutM);stroke-miterlimit:4;stroke-dasharray:12,6;stroke-dashoffset:0"
+       d="M 122.77637,-1.2141311 V -65.89271 H 552.0935 l 0,52.311714"
        id="path319454"
        sodipodi:nodetypes="cccc" />
     <path
-       style="fill:none;stroke:#000000;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;marker-end:url(#d0)"
-       d="M 192.56955,13.814681 V -41.154378 H 477.29327 V 7.7820753"
+       style="fill:none;stroke:#5e5c64;stroke-width:1.5;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;marker-end:url(#TriangleOutM);stroke-miterlimit:4;stroke-dasharray:12,6;stroke-dashoffset:0"
+       d="m 192.56955,13.814681 v -54.969059 h 284.72372 l 0,43.040584"
        id="path319456"
        sodipodi:nodetypes="cccc" />
     <g
@@ -10971,8 +11013,8 @@
          y="-236.25673"
          style="font-size:19.2px;fill:#666666;fill-opacity:1;stroke-width:1.44">512</tspan></text>
     <path
-       style="fill:none;stroke:#000000;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;marker-end:url(#d0)"
-       d="m 265.56199,20.861659 -0.2303,-37.892998 H 407.2544 l -0.0324,33.342076"
+       style="fill:none;stroke:#5e5c64;stroke-width:1.5;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;marker-end:url(#TriangleOutM);stroke-miterlimit:4;stroke-dasharray:12,6;stroke-dashoffset:0"
+       d="m 265.56199,20.861659 -0.2303,-37.892998 H 407.2544 l -0.0324,28.805904"
        id="path319458"
        sodipodi:nodetypes="cccc" />
     <path
