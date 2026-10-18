@@ -167,13 +167,13 @@ def load_ir_tbs_multi_step(
         input_files = [input_file]
     else:
         file_p = get_previous_input_file(input_file)
-        file_pp = get_previous_input_file(file_p)
         file_n = get_next_input_file(input_file)
+        file_nn = get_next_input_file(file_n)
         input_files = [
-            file_pp,
             file_p,
             input_file,
-            file_n
+            file_n,
+            file_nn
         ]
 
     data = []
@@ -370,15 +370,19 @@ class MultiInputLoader:
             aux: Auxiliary data as returned by this input loader.
             filename: The output filename as returned by the input loader.
         """
-        surface_precip = results["surface_precip"].data.numpy()[0, 0]
+        surface_precip = results["surface_precip"].data.numpy()[0]
         quality = np.zeros_like(surface_precip, dtype=np.int8)
 
-        invalid = (surface_precip < -0.01) * (surface_precip > 200)
+        invalid = (surface_precip < -0.01) * (surface_precip > 100)
         surface_precip[invalid] = np.nan
         surface_precip = np.maximum(surface_precip, 0.0)
         quality[invalid] = 2
 
         valid_input = aux["valid_input"]
+        if valid_input.ndim < surface_precip.ndim:
+            valid_input = valid_input[None]
+            valid_input = np.broadcast_to(valid_input, surface_precip.shape)
+
         surface_precip[~valid_input] = np.nan
         quality[~valid_input] = 1
 
@@ -395,12 +399,16 @@ class MultiInputLoader:
             pop = None
             pop_heavy = None
 
+        time = aux["time"]
+        steps = 1 if surface_precip.ndim == 2 else surface_precip.shape[0]
+        time = time + np.array([np.timedelta64(step, "h") for step in range(steps)])
+
         results = xr.Dataset({
             "latitude": (("latitude",), aux["latitude"]),
             "longitude": (("longitude",), aux["longitude"]),
-            "time": (("time",), [aux["time"]]),
-            "surface_precip": (("latitude", "longitude"), surface_precip),
-            "quality_flag": (("latitude", "longitude"), quality)
+            "time": (("time",), time),
+            "surface_precip": (("time", "latitude", "longitude"), surface_precip),
+            "quality_flag": (("time", "latitude", "longitude"), quality)
         })
 
         if pop is not None:
@@ -415,6 +423,15 @@ class MultiInputLoader:
         results.attrs["algorithm"] = f"gprof_ir, version {version('gprof_ir')}"
         results.attrs["variant"] = "clim"
         results.attrs["n_steps"] = self.n_steps
+
+        if 1 < results.time.size:
+            for t_ind in range(results.time.size):
+                res = results[{"time": t_ind}]
+                date = res.time.data.astype("datetime64[s]").item()
+                date_str = date.strftime("%Y%m%d%H%M")
+                fname = f"gprof_ir_clim_{date_str}.nc"
+                res.to_netcdf(Path(filename).parent / fname)
+
         return results, filename
 
 
@@ -535,9 +552,9 @@ def run_retrieval_multi(
 @click.option(
     "--n_steps",
     type=int,
-    default=3,
+    default=4,
     help=(
-        "The number of input steps: None, 3, or 5"
+        "The number of input steps: None, 1, or 4"
     )
 )
 @click.option(
@@ -718,7 +735,6 @@ class SingleInputLoader:
         """
         Load input data for file with given index.
         """
-        inpt = self.load_input()
         return self.load_input()
 
 
@@ -737,7 +753,7 @@ class SingleInputLoader:
             aux: Auxiliary data as returned by this input loader.
             filename: The output filename as returned by the input loader.
         """
-        surface_precip = results["surface_precip"].data.numpy()[0, 0]
+        surface_precip = results["surface_precip"].data.numpy()[0]
         quality = np.zeros_like(surface_precip, dtype=np.int8)
 
         invalid = (surface_precip < -0.01) * (surface_precip > 200)
@@ -746,7 +762,10 @@ class SingleInputLoader:
         quality[invalid] = 2
 
         valid_input = aux["valid_input"]
-        surface_precip[~valid_input] = np.nan
+        if valid_input.ndim < surface_precip.ndim:
+            valid_input = valid_input.unsqueeze(0)
+
+        surface_precip[~valid_input ] = np.nan
         quality[~valid_input] = 1
 
         if self.output_format != "netcdf":
@@ -762,12 +781,16 @@ class SingleInputLoader:
             pop = None
             pop_heavy = None
 
+        time = aux["time"]
+        steps = 1 if surface_precip.ndim == 2 else surface_precip.shape[0]
+        time = time + np.array([np.timedelta64(step, "h") for step in range(steps)])
+
         results = xr.Dataset({
             "latitude": (("latitude",), aux["latitude"]),
             "longitude": (("longitude",), aux["longitude"]),
-            "time": (("time",), [aux["time"]]),
-            "surface_precip": (("latitude", "longitude"), surface_precip),
-            "quality_flag": (("latitude", "longitude"), quality)
+            "time": (("time",), time),
+            "surface_precip": (("time", "latitude", "longitude"), surface_precip),
+            "quality_flag": (("time", "latitude", "longitude"), quality)
         })
 
         if pop is not None:
