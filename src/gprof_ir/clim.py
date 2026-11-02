@@ -431,6 +431,7 @@ class MultiInputLoader:
                 date_str = date.strftime("%Y%m%d%H%M")
                 fname = f"gprof_ir_clim_{date_str}.nc"
                 res.to_netcdf(Path(filename).parent / fname)
+            return filename
 
         return results, filename
 
@@ -805,6 +806,16 @@ class SingleInputLoader:
         results.attrs["algorithm"] = f"gprof_ir, version {version('gprof_ir')}"
         results.attrs["variant"] = "clim"
         results.attrs["n_steps"] = self.n_steps
+
+        if 1 < results.time.size:
+            for t_ind in range(results.time.size):
+                res = results[{"time": t_ind}]
+                date = res.time.data.astype("datetime64[s]").item()
+                date_str = date.strftime("%Y%m%d%H%M")
+                fname = f"gprof_ir_clim_{date_str}.nc"
+                res.to_netcdf(Path(filename).parent / fname)
+            return filename
+
         return results, filename
 
 
