@@ -20,11 +20,13 @@ import click
 from filelock import FileLock
 from huggingface_hub import hf_hub_download
 import numpy as np
-from pytorch_retrieve.architectures import RetrievalModel
+from pytorch_retrieve.architectures import RetrievalModel, load_and_compile_model
 from pytorch_retrieve.inference import InferenceConfig, load_model, run_inference
 from pytorch_retrieve.config import RetrievalOutputConfig
+
 from scipy.ndimage import binary_closing
 import torch
+from torch import nn
 import toml
 import xarray as xr
 
@@ -192,6 +194,34 @@ def load_ir_tbs_multi_step(
 
     data = xr.concat(data, dim="time").sortby("time")
     return data
+
+
+class GPROFIRCompositeModel(nn.Module):
+    """
+    GPROF-IR model combining separately trained models for sub-three-hourly precipitation
+    retrievals for GridSat-B1 observations.
+    """
+
+    def __init__(self):
+        super().__init__()
+        config_path = Path(__file__).parent / "config_files" / "gprof_ir_clim_model.toml"
+        self.model_1 = load_and_compile_model(config_path)
+        self.model_2 = load_and_compile_model(config_path)
+        self.model_3 = load_and_compile_model(config_path)
+
+    def forward(self, inpt: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
+        """
+        Propagte input observations through each model and concatenate results along
+        channel dimension.
+        """
+        res_1 = self.model_1(inpt)
+        res_2 = self.model_2(inpt)
+        res_3 = self.model_3(inpt)
+
+        res = {}
+        for key in res_1:
+            res[key] = torch.cat([res_1[key], res_2[key], res_3[key]], dim=2)
+        return res
 
 
 class MultiInputLoader:
