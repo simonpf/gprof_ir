@@ -28,7 +28,9 @@ def run_tests(
         model: nn.Module,
         test_dataset: DataLoader,
         scalar_metrics: Dict[str, List[ScalarMetric]],
-        prob_metrics: Dict[str, List[ScalarMetric]],
+        prob_metrics: Dict[str, Dict[float, ScalarMetric]],
+        detection_metrics: Dict[str, List[ScalarMetric]],
+        heavy_detection_metrics: Dict[str, List[ScalarMetric]],
         spatial_metrics: Dict[str, List[ScalarMetric]],
         device: str = "cuda",
         dtype: str = "float32"
@@ -42,6 +44,9 @@ def run_tests(
         scalar_metrics: A dictionary mapping target names to corresponding
              metrics to evaluate.
         prob_metrics: A dictionary mapping target names to probablistic mappings.
+        detection_metrics: List of metrics to use to evaluate retrieval detection skill.
+        heavy_detection_metrics: List of metrics to use to evaluation heavy
+            precipitation detection skill.
         spatial_metrics: A dictionary mapping target names to spatially resolved metrics.
         tile_size: A tile size to use for the evaluation.
         device: The device on which to perform the evaluation.
@@ -53,7 +58,9 @@ def run_tests(
     model = model.to(device=device, dtype=dtype).eval()
 
     for x, y in tqdm(test_dataset):
+
         x = to_rec(x, device=device, dtype=dtype)
+        inpt_mask = torch.isfinite(x["merged_ir"])[:, 0]
 
         y = to_rec(y, device=device, dtype=dtype)
         for key, target in y.items():
@@ -68,12 +75,9 @@ def run_tests(
 
             ref = y[key]
 
-            prob_rain = pred_k.probability_greater_than(1e-2).squeeze()
-            mask = 0.99 < prob_rain
-
             for thresh, mtrcs in prob_metrics[key].items():
                 pred_prob = pred_k.probability_greater_than(thresh).squeeze()
-                mask = ref.mask
+                mask = ref.mask * inpt_mask[..., ::2, ::2]
                 ref_prob = (thresh < ref).to(dtype=ref.dtype)
                 ref_prob[mask] = torch.nan
                 for mtrc in mtrcs:
@@ -82,12 +86,32 @@ def run_tests(
                         ref_prob.float().cpu().numpy()
                     )
 
+            # Detection Metrics
+            mtrcs = detection_metrics.get(key, [])
+            for metric in mtrcs:
+                pred_prob = pred_k.probability_greater_than(0.1).squeeze()
+                metric.update(
+                    pred_prob[~mask].float().cpu().numpy(),
+                    (0.1 < ref[~mask]).float().cpu().numpy()
+                )
+
+            # Heavy Detection Metrics
+            mtrcs = heavy_detection_metrics.get(key, [])
+            for metric in mtrcs:
+                pred_prob = pred_k.probability_greater_than(10.0).squeeze()
+                metric.update(
+                    pred_prob[~mask].float().cpu().numpy(),
+                    (10.0 < ref[~mask]).float().cpu().numpy()
+                )
+
             pred_k = pred_k.expected_value()
 
+            ref[mask] = torch.nan
             mtrcs = scalar_metrics.get(key, [])
             for metric in mtrcs:
                 metric = metric.to(device=device)
                 metric.update(pred_k, ref)
+
 
             lats = y["latitude"].float().cpu().numpy()
             lons = y["longitude"].float().cpu().numpy()
@@ -118,6 +142,17 @@ def run_tests(
             res = xr.merge([mtrc.compute() for mtrc in mtrcs])
             res = res.rename(calibration=f"calibration_{thresh:02}")
             retrieval_results = xr.merge([res, retrieval_results])
+
+    for name, mtrcs in detection_metrics.items():
+        res = xr.merge([mtrc.compute() for mtrc in mtrcs])
+        retrieval_results = xr.merge([res, retrieval_results])
+
+    for name, mtrcs in heavy_detection_metrics.items():
+        res = xr.merge([mtrc.compute() for mtrc in mtrcs])
+        new_names = {
+            name: name + "_heavy" for name in res.variables
+        }
+        retrieval_results = xr.merge([res.rename(**new_names), retrieval_results])
 
     for name, mtrcs in spatial_metrics.items():
         res = xr.merge([mtrc.compute() for mtrc in mtrcs])
@@ -177,6 +212,18 @@ def cli(
         }
     }
 
+    detection_metrics = {
+        "surface_precip": [
+            metrics_ir.PRCurve()
+        ]
+    }
+
+    heavy_detection_metrics = {
+        "surface_precip": [
+            metrics_ir.PRCurve()
+        ]
+    }
+
     inpt_data = f"merged_ir_{n_steps}" if 1 < n_steps else "merged_ir"
     ref_data = "gpm_coords" if config == "cmb" else "gpm_gmi_coords"
     test_dataset = SingleStepDataset(
@@ -213,6 +260,8 @@ def cli(
         scalar_metrics=scalar_metrics,
         spatial_metrics=spatial_metrics,
         prob_metrics=prob_metrics,
+        detection_metrics=detection_metrics,
+        heavy_detection_metrics=heavy_detection_metrics,
         device=device,
         dtype=dtype,
     )

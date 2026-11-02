@@ -9,6 +9,7 @@ from typing import Optional, Tuple
 import numpy as np
 import xarray as xr
 
+from satrain.metrics import PRCurve
 from satrain.metrics import QuantificationMetric
 
 
@@ -17,6 +18,80 @@ class SpatialQuantificationMetric(QuantificationMetric):
     """
     Class representing metrics providing spatially resolved results.
     """
+
+
+class CountsSpatial(QuantificationMetric):
+    r"""
+    The number of samples per grid box.
+    """
+    def __init__(
+            self,
+            resolution = (1.0, 1.0),
+    ):
+        """
+        Args:
+            resolution: The resolution in degree to use for the underlying
+                spatial grid. The first element is the resolution along meridional
+                direction, the second element the resolution along zonal direction.
+        """
+        self.n_lon = int(360 / resolution[0])
+        self.n_lat = int(180 / resolution[1])
+        self.bins = (
+            np.linspace(-90, 90, self.n_lat + 1),
+            np.linspace(-180, 180, self.n_lon + 1)
+        )
+        self.dims = ("latitude", "longitude")
+        self.lats = 0.5 * (self.bins[0][1:] + self.bins[0][:-1])
+        self.lons = 0.5 * (self.bins[1][1:] + self.bins[1][:-1])
+
+        super().__init__(
+            buffers={
+                "counts": ((self.n_lat, self.n_lon), np.float64),
+            }
+        )
+
+    def update(
+            self,
+            lons: np.ndarray,
+            lats: np.ndarray,
+            prediction: np.ndarray,
+            target: np.ndarray
+    ) -> None:
+        """
+        Update metric values with given prediction.
+
+        Args:
+             lons: The longitude coordinates of the retrievals.
+             lats: The latitude coordinates of the retrievals.
+             prediction: An np.ndarray containing the predicted values.
+             target: An np.ndarray containing the reference values.
+        """
+        pred = prediction
+        valid = np.isfinite(target)
+        pred = pred[valid]
+        target = target[valid]
+        lons = lons[valid]
+        lats = lats[valid]
+
+        with self.lock:
+            self.counts += np.histogram2d(lats, lons, bins=self.bins)[0]
+
+    def compute(self, name: Optional[str] = None) -> xr.Dataset:
+        """
+        Calculate the MSE for all results passed to this metric object.
+
+        Return:
+            An xarray.Dataset containing a single, scalar variable 'mse' containing the
+            MSE for the assessed results.
+        """
+        counts = xr.Dataset({
+            "latitude": (("latitude",), self.lats),
+            "longitude": (("longitude",), self.lons),
+            "counts_spatial": (("latitude", "longitude"), np.array(self.counts).copy())
+        })
+        counts.counts_spatial.attrs["full_name"] = "Number of samples per grid box"
+        counts.counts_spatial.attrs["unit"] = r""
+        return counts
 
 
 class BiasSpatial(QuantificationMetric):
