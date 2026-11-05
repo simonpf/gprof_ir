@@ -22,7 +22,7 @@ from filelock import FileLock
 from huggingface_hub import hf_hub_download
 import numpy as np
 from pytorch_retrieve.architectures import RetrievalModel, load_and_compile_model
-from pytorch_retrieve.inference import InferenceConfig, load_model, run_inference, run_inference_parallel
+from pytorch_retrieve.inference import InferenceConfig, load_model, run_inference
 from pytorch_retrieve.config import RetrievalOutputConfig
 
 from scipy.ndimage import binary_closing
