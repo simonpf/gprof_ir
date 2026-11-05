@@ -4,6 +4,7 @@ gprof_ir.clim
 
 Provides functionality to run the climate version of GPROF-IR.
 """
+from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
 from datetime import datetime, timedelta
 from importlib.metadata import version
 import gzip
@@ -21,7 +22,7 @@ from filelock import FileLock
 from huggingface_hub import hf_hub_download
 import numpy as np
 from pytorch_retrieve.architectures import RetrievalModel, load_and_compile_model
-from pytorch_retrieve.inference import InferenceConfig, load_model, run_inference
+from pytorch_retrieve.inference import InferenceConfig, load_model, run_inference, run_inference_parallel
 from pytorch_retrieve.config import RetrievalOutputConfig
 
 from scipy.ndimage import binary_closing
@@ -35,6 +36,12 @@ from . import config
 
 LOGGER = logging.getLogger(__name__)
 
+_POOL = None
+def get_pool():
+    global _POOL
+    if _POOL is None:
+        _POOL = ThreadPoolExecutor(max_workers=2)
+    return _POOL
 
 def get_date(path: Path) -> datetime:
     """
@@ -68,7 +75,10 @@ def load_input_data(
     with xr.open_dataset(path) as data:
         if slices is None:
             return data[["irwin_cdr"]].load()
-        return data[["irwin_cdr"]][slices].load()
+        data = data[["irwin_cdr"]][slices].load()
+        LOGGER.info("Done loading input from file %s.", path)
+
+        return data
 
 
 def download_model(n_steps: Optional[int] = None) -> Path:
@@ -121,6 +131,11 @@ def load_inference_config(
             model.output_config["surface_precip"],
             "ExceedanceProbability",
             {"threshold": 1e1}
+        )
+        output["surface_precip_rand"] = RetrievalOutputConfig(
+            model.output_config["surface_precip"],
+            "RandomSample",
+            {"n_samples": 1}
         )
 
     return inference_config
@@ -279,6 +294,10 @@ class MultiInputLoader:
         self.output_path = output_path
         self.roi = roi
 
+        self._next_input = {}
+        if 0 < len(self):
+            self._next_input[0] = get_pool().submit(self.load_input, self.files[0])
+
     @cached_property
     def roi_slices(self):
         """
@@ -373,19 +392,33 @@ class MultiInputLoader:
         """
         Iterate over retrieval input files.
         """
-        for path in self.files:
+        for ind, _ in enumerate(self.files):
             try:
-                yield self.load_input(path)
+                yield self[ind]
             except Exception:
+                LOGGER.exception(
+                    "Encoutered an error when loading input for file %s.",
+                    self.files[ind]
+                )
+
                 continue
 
     def __getitem__(self, ind: int) -> Tuple[Dict[str, torch.Tensor], Dict[str, Any], str]:
         """
         Load input data for file with given index.
         """
-        return self.load_input(self.files[ind])
+        if ind in self._next_input:
+            inpt = self._next_input.pop(ind).result()
+        else:
+            inpt = self.load_input(self.files[ind])
+        if ind < len(self.files) - 1:
+            self._next_input[ind + 1] = get_pool().submit(self.load_input, self.files[ind + 1])
+        for key in self._next_input:
+            if key not in (ind, ind+1):
+                self._next_input.pop(key).result()
+        return inpt
 
-    def finalize_results(
+    def _finalize_results(
             self,
             results: Dict[str, torch.Tensor],
             aux: Dict[str, Any],
@@ -425,9 +458,11 @@ class MultiInputLoader:
         if "probability_of_precip" in results:
             pop = results["probability_of_precip"].data.numpy()[:, 0]
             pop_heavy = results["probability_of_heavy_precip"].data.numpy()[:, 0]
+            surface_precip_rand = results["surface_precip_rand"].data.numpy()[:, 0]
         else:
             pop = None
             pop_heavy = None
+            surface_precip_rand = None
 
         time = aux["time"]
         steps = 1 if surface_precip.ndim == 2 else surface_precip.shape[0]
@@ -444,8 +479,33 @@ class MultiInputLoader:
         if pop is not None:
             results["probability_of_precip"] = (("time", "latitude", "longitude"), pop)
             results["probability_of_heavy_precip"] = (("time", "latitude", "longitude"), pop_heavy)
+            results["surface_precip_rand"] = (("time", "latitude", "longitude"), surface_precip_rand)
 
-        results.surface_precip.encoding = {"dtype": "float32", "zlib": True}
+        results.surface_precip.encoding = {
+            "dtype": "uint16",
+            "zlib": True,
+            "_FillValue": 2 ** 16 - 1,
+            "scale_factor": 0.01
+        }
+        if pop is not None:
+            results.probability_of_precip.encoding = {
+                "dtype": "uint8",
+                "zlib": True,
+                "_FillValue": 2 ** 8 - 1,
+                "scale_factor": 1 / 254,
+            }
+            results.probability_of_heavy_precip.encoding = {
+                "dtype": "uint8",
+                "zlib": True,
+                "_FillValue": 2 ** 8 - 1,
+                "scale_factor": 1 / 254,
+            }
+            results.surface_precip_rand.encoding = {
+                "dtype": "uint16",
+                "zlib": True,
+                "_FillValue": 2 ** 16 - 1,
+                "scale_factor": 0.01
+            }
         results.quality_flag.encoding = {"zlib": True}
         results.quality_flag.attrs["meaning"] = (
             "0: Good quality, 1: Missing input, 2: Invalid value returned from retrieval"
@@ -454,16 +514,31 @@ class MultiInputLoader:
         results.attrs["variant"] = "clim"
         results.attrs["n_steps"] = self.n_steps
 
-        if 1 < results.time.size:
-            for t_ind in range(results.time.size):
-                res = results[{"time": t_ind}]
-                date = res.time.data.astype("datetime64[s]").item()
-                date_str = date.strftime("%Y%m%d%H%M")
-                fname = f"gprof_ir_clim_{date_str}.nc"
-                res.to_netcdf(Path(filename).parent / fname)
-            return filename
+        for t_ind in range(results.time.size):
+            res = results[{"time": t_ind}]
+            date = res.time.data.astype("datetime64[s]").item()
+            date_str = date.strftime("%Y%m%d%H%M")
+            fname = f"gprof_ir_clim_{date_str}.nc"
+            res.to_netcdf(Path(filename).parent / fname)
+        return filename
 
-        return results, filename
+    def finalize_results(
+            self,
+            results: Dict[str, torch.Tensor],
+            aux: Dict[str, Any],
+            filename: str,
+            **kwargs
+    ):
+        """
+        Finalizes the retrieval results.
+
+        Args:
+            results: Dictionary containing the retrieval results.
+            aux: Auxiliary data as returned by this input loader.
+            filename: The output filename as returned by the input loader.
+        """
+        get_pool().submit(self._finalize_results, results, aux, filename)
+        return filename
 
 
 def run_retrieval_multi(
@@ -515,7 +590,11 @@ def run_retrieval_multi(
     model = download_model(n_steps=n_steps)
     warnings.filterwarnings("ignore", module="torch")
     model = load_model(model).eval()
-    n_steps = model.encoder.stages[0].projection.weight.shape[1]
+
+    if hasattr(model, "encoder"):
+        n_steps = model.encoder.stages[0].projection.weight.shape[1]
+    else:
+        n_steps = model.model_1.encoder.stages[0].projection.weight.shape[1]
 
     # Inference config
     inference_config = load_inference_config(
@@ -551,7 +630,7 @@ def run_retrieval_multi(
         device=device,
         dtype=dtype,
         progress=progress,
-        robust=False
+        robust=True
     )
 
 @click.argument("input_path", type=str)
