@@ -456,9 +456,9 @@ class MultiInputLoader:
             return output_path
 
         if "probability_of_precip" in results:
-            pop = results["probability_of_precip"].data.numpy()[:, 0]
-            pop_heavy = results["probability_of_heavy_precip"].data.numpy()[:, 0]
-            surface_precip_rand = results["surface_precip_rand"].data.numpy()[:, 0]
+            pop = results["probability_of_precip"].data.numpy()[0]
+            pop_heavy = results["probability_of_heavy_precip"].data.numpy()[0]
+            surface_precip_rand = results["surface_precip_rand"].data.numpy()[0]
         else:
             pop = None
             pop_heavy = None
@@ -537,7 +537,7 @@ class MultiInputLoader:
             aux: Auxiliary data as returned by this input loader.
             filename: The output filename as returned by the input loader.
         """
-        get_pool().submit(self._finalize_results, results, aux, filename)
+        task = get_pool().submit(self._finalize_results, results, aux, filename)
         return filename
 
 
